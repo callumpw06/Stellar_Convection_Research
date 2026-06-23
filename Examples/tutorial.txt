@@ -1,0 +1,5 @@
+This is a tutorial on how to run a Rayleigh-Benard convection simulation on a local device. There is step-by-step tutorials on installation on the Dedalus Project website: https://dedalus-project.readthedocs.io/en/latest/pages/installation.html
+I will give a condensed version of an 'installation using conda' tutorial that can be found on the website, if your main interest is to run this simulation as it demonstrates the fundamental techniques used throughout this project.
+First, please ensure you have the latest verion of Conda installed - one can access the installation guide through this link: https://www.anaconda.com/download
+To install the appropriate dedalus3 python library, please take care in following these steps.
+  1.
