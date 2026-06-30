@@ -7,8 +7,8 @@ Below, there is weekly progress reports, including; completed tasks, background 
 ### Week 1
 29/06/26
 - Read Chapter 1 of 'Internally heated convection and Rayleigh-Benard convection' by **David Goluskin**
-- Worked through 'Tutorials' section of the [Dedalus Project website]{https://dedalus-project.readthedocs.io/en/latest/pages/tutorials.html}
-- Brief overview of [The Tau Method]{https://dedalus-project.readthedocs.io/en/latest/pages/tau_method.html} used for imposing boundary conditions in PDE problems.
+- Worked through 'Tutorials' section of the [Dedalus Project website](https://dedalus-project.readthedocs.io/en/latest/pages/tutorials.html)
+- Brief overview of [The Tau Method](https://dedalus-project.readthedocs.io/en/latest/pages/tau_method.html) used for imposing boundary conditions in PDE problems.
 
 30/06/26
 - Attempted to create Rayleigh-Benard simulations in Spherical and Polar Coordinates, without much success. Then, I attempted to use the Boussinesq equations to try model Rayleigh-Benard convection in 2D Cartesian coordinates; leading to diverging temperature values.
