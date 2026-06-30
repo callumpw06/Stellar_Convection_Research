@@ -11,3 +11,7 @@ Below, there is weekly progress reports, including; completed tasks, background 
 - Brief overview of [The Tau Method]{https://dedalus-project.readthedocs.io/en/latest/pages/tau_method.html} used for imposing boundary conditions in PDE problems.
 
 30/06/26
+- Attempted to create Rayleigh-Benard simulations in Spherical and Polar Coordinates, without much success. Then, I attempted to use the Boussinesq equations to try model Rayleigh-Benard convection in 2D Cartesian coordinates; leading to diverging temperature values.
+- Returned to working Rayleigh-Benard code, and created working visualisations of buoyancy, vorticity, and velocity magnitude that can be found in the Rayleigh-Benard folder. This also includes a plot of Nusselt number against time for this particular simulation.
+
+01/07/26
