@@ -11,7 +11,7 @@ import matplotlib
 matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from Boussinesq_Convectiom import Lx, Lz # Import Lx and Lz from the simulation script
+#from Boussinesq_Convectiom import Lx, Lz # Import Lx and Lz from the simulation script
 
 # Configuration
 data_folder = 'analysis'
@@ -19,7 +19,7 @@ field_to_plot = 'temperature'
 output_movie = 'temperature_fixed.mp4'
 
 # Dimensions
-extent = [0, Lx, 0, Lz]
+extent = [0, 1, 0, 4]
 
 print(f"Searching for data in '/{data_folder}'...")
 
@@ -63,7 +63,7 @@ def update(frame_idx):
 
     clim_min, clim_max = np.min(current_data), np.max(current_data)
     im.set_clim(clim_min, clim_max)
-    title_text.set_text(f"Time: {full_times[frame_idx]:.2f}")
+    title_text.set_text(f"Time: {full_times[frame_idx]:.5f}")
 
     if frame_idx % 10 == 0:
          print(f"Rendering frame {frame_idx}/{num_frames}...")

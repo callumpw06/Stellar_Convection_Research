@@ -29,10 +29,11 @@ Lx, Lz = 1, 4
 Nx, Nz = 256, 64
 Rayleigh = 2e6
 Prandtl = 1
+Q = 0
 dealias = 3/2
-stop_sim_time = 40
+stop_sim_time = 4e-2
 timestepper = d3.RK222
-max_timestep = 0.125
+max_timestep = 1e-5
 dtype = np.float64
 
 # Bases
@@ -43,11 +44,11 @@ zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
 
 # Fields
 p = dist.Field(name='p', bases=(xbasis,zbasis))
-b = dist.Field(name='b', bases=(xbasis,zbasis))
+T = dist.Field(name='T', bases=(xbasis,zbasis))
 u = dist.VectorField(coords, name='u', bases=(xbasis,zbasis))
 tau_p = dist.Field(name='tau_p')
-tau_b1 = dist.Field(name='tau_b1', bases=xbasis)
-tau_b2 = dist.Field(name='tau_b2', bases=xbasis)
+tau_T1 = dist.Field(name='tau_T1', bases=xbasis)
+tau_T2 = dist.Field(name='tau_T2', bases=xbasis)
 tau_u1 = dist.VectorField(coords, name='tau_u1', bases=xbasis)
 tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
 
@@ -59,18 +60,18 @@ ex, ez = coords.unit_vector_fields(dist)
 lift_basis = zbasis.derivative_basis(1)
 lift = lambda A: d3.Lift(A, lift_basis, -1)
 grad_u = d3.grad(u) + ez*lift(tau_u1) # First-order reduction
-grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
+grad_T = d3.grad(T) + ez*lift(tau_T1) # First-order reduction
 
 # Problem
 # First-order form: "div(f)" becomes "trace(grad_f)"
 # First-order form: "lap(f)" becomes "div(grad_f)"
-problem = d3.IVP([p, b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], namespace=locals())
+problem = d3.IVP([p, T, u, tau_p, tau_T1, tau_T2, tau_u1, tau_u2], namespace=locals())
 problem.add_equation("trace(grad_u) + tau_p = 0")
-problem.add_equation("dt(b) - kappa*div(grad_b) + lift(tau_b2) = - u@grad(b)")
-problem.add_equation("dt(u) - nu*div(grad_u) + grad(p) - b*ez + lift(tau_u2) = - u@grad(u)")
-problem.add_equation("b(z=0) = Lz")
+problem.add_equation("dt(T) - div(grad_T) + lift(tau_T2) - Q = - u@grad(T)")
+problem.add_equation("dt(u) - Prandtl*div(grad_u) + grad(p) - Prandtl*Rayleigh*T*ez + lift(tau_u2) = - u@grad(u)")
+problem.add_equation("T(z=0) = Lz")
 problem.add_equation("u(z=0) = 0")
-problem.add_equation("b(z=Lz) = 0")
+problem.add_equation("T(z=Lz) = 0")
 problem.add_equation("u(z=Lz) = 0")
 problem.add_equation("integ(p) = 0") # Pressure gauge
 
@@ -79,14 +80,16 @@ solver = problem.build_solver(timestepper)
 solver.stop_sim_time = stop_sim_time
 
 # Initial conditions
-b.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
-b['g'] *= z * (Lz - z) # Damp noise at walls
-b['g'] += Lz - z # Add linear background
+T.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
+T['g'] *= z * (Lz - z) # Damp noise at walls
+T['g'] += Lz - z # Add linear background
 
 # Analysis
-snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.25, max_writes=50)
-snapshots.add_task(b, name='buoyancy')
-snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
+analysis = solver.evaluator.add_file_handler('analysis', sim_dt=10*max_timestep, max_writes=200)
+analysis.add_task(T, name='temperature')
+analysis.add_task(-d3.div(d3.skew(u)), name='vorticity')
+analysis.add_task(np.sqrt(u@u), name='velocity_magnitude')
+analysis.add_task(1 + d3.integ(u@ez * T), name='Nu') # Nusselt number
 
 # CFL
 CFL = d3.CFL(solver, initial_dt=max_timestep, cadence=10, safety=0.5, threshold=0.05,
