@@ -32,7 +32,7 @@ print(f"Found {len(files)} files. Loading data...")
 
 for i, file_path in enumerate(files):
     with h5py.File(file_path, 'r') as f:
-        chunk_data = f[f'tasks/Nu'][:,0]
+        chunk_data = f[f'tasks/Nu'][:,0]  # Load Nusselt number data
         #avg_flux_per_time = np.mean(chunk_data, axis=1)  # Average over x
         chunk_times = f['scales/sim_time'][:]
 

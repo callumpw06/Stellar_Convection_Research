@@ -19,7 +19,7 @@ field_to_plot = 'vorticity'
 output_movie = 'vorticity_fixed.mp4'
 
 # Dimensions
-extent = [0, 1, 0, 4]
+extent = [0, 4, 0, 1]
 
 print(f"Searching for data in '/{data_folder}'...")
 

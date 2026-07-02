@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 # Parameters
-Lx, Lz = 1, 4
+Lx, Lz = 4, 1
 Nx, Nz = 256, 64
 Rayleigh = 2e6
 Prandtl = 1
@@ -67,7 +67,7 @@ grad_T = d3.grad(T) + ez*lift(tau_T1) # First-order reduction
 # First-order form: "lap(f)" becomes "div(grad_f)"
 problem = d3.IVP([p, T, u, tau_p, tau_T1, tau_T2, tau_u1, tau_u2], namespace=locals())
 problem.add_equation("trace(grad_u) + tau_p = 0")
-problem.add_equation("dt(T) - div(grad_T) + lift(tau_T2) - Q = - u@grad(T)")
+problem.add_equation("dt(T) - div(grad_T) + lift(tau_T2) = - u@grad(T) + Q")
 problem.add_equation("dt(u) - Prandtl*div(grad_u) + grad(p) - Prandtl*Rayleigh*T*ez + lift(tau_u2) = - u@grad(u)")
 problem.add_equation("T(z=0) = Lz")
 problem.add_equation("u(z=0) = 0")
