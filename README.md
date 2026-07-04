@@ -21,3 +21,8 @@ Below, there is weekly progress reports, including; completed tasks, background 
 02/07/26
 - Watched a [video](https://www.youtube.com/watch?v=Yiz92Ekn7vU) on adjoint-based optimisation for CFD examples, using an airfoil as an example.
 - Research into why the temperature reading was diverging from my code using the Boussinesq equations - it was because of the different nondimensionalisation to the example script. Rescaling time (to much smaller time steps) has fixed this issue - there is visualisations of this code depicted in the [Boussinesq_Equations](https://github.com/callumpw06/Stellar_Convection_Research/tree/main/Boussinesq_Equations) folder.
+
+03/07/26
+- Continued reading the paper by **David Goluskin**.
+- Re-read 'Fast automated adjoints for spectral PDE solvers' and used Google Gemini to research the adjoint methods for optimising an arbitrary objective function using SciPy and the dedalus3 python libraries.
+- Began coding my own program to optimise the Nusselt Number in the Boussinesq equations simulations. It runs currently, but my laptop doesn't computational power to complete the program.
