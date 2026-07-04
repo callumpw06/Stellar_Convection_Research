@@ -63,7 +63,7 @@ def update(frame_idx):
 
     clim_min, clim_max = np.min(current_data), np.max(current_data)
     im.set_clim(clim_min, clim_max)
-    title_text.set_text(f"Time: {full_times[frame_idx]:.5f}")
+    title_text.set_text(f"Time: {full_times[frame_idx]:.6f}")
 
     if frame_idx % 10 == 0:
          print(f"Rendering frame {frame_idx}/{num_frames}...")
