@@ -36,10 +36,10 @@ for i, file_path in enumerate(files):
         #avg_flux_per_time = np.mean(chunk_data, axis=1)  # Average over x
         chunk_times = f['scales/sim_time'][:]
 
-        total_heat_flux = kappa + chunk_data  # Total heat flux
-        nu_t = total_heat_flux / kappa  # Nusselt number
+        #total_heat_flux = kappa + chunk_data  # Total heat flux
+        #nu_t = total_heat_flux / kappa  # Nusselt number
         
-        all_data.append(nu_t)
+        all_data.append(chunk_data)
         all_times.append(chunk_times)
 
 # Concatenate all chunks

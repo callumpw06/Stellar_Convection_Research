@@ -89,10 +89,10 @@ analysis = solver.evaluator.add_file_handler('analysis', sim_dt=10*max_timestep,
 analysis.add_task(T, name='temperature')
 analysis.add_task(-d3.div(d3.skew(u)), name='vorticity')
 analysis.add_task(np.sqrt(u@u), name='velocity_magnitude')
-analysis.add_task(1 + d3.integ(u@ez * T), name='Nu') # Nusselt number
+analysis.add_task(1 + d3.integ(u@ez * T)/(Lx*Lz), name='Nu') # Nusselt number
 
 # CFL
-CFL = d3.CFL(solver, initial_dt=max_timestep, cadence=10, safety=0.5, threshold=0.05,
+CFL = d3.CFL(solver, initial_dt=1e-7, cadence=10, safety=0.5, threshold=0.05,
              max_change=1.5, min_change=0.5, max_dt=max_timestep)
 CFL.add_velocity(u)
 
@@ -108,7 +108,7 @@ try:
         solver.step(timestep)
         if (solver.iteration-1) % 10 == 0:
             max_Re = flow.max('Re')
-            logger.info('Iteration=%i, Time=%e, dt=%e, max(Re)=%f' %(solver.iteration, solver.sim_time, timestep, max_Re))
+            logger.info(f'Iteration={solver.iteration}, Time={solver.sim_time:e}, dt={timestep:e}, Completed={100*solver.sim_time/solver.stop_sim_time:.2f}%, max(Re)={max_Re:.2f}')
 except:
     logger.error('Exception raised, triggering end of main loop.')
     raise
