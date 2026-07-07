@@ -26,3 +26,11 @@ Below, there is weekly progress reports, including; completed tasks, background 
 - Continued reading the paper by **David Goluskin**.
 - Re-read 'Fast automated adjoints for spectral PDE solvers' and used Google Gemini to research the adjoint methods for optimising an arbitrary objective function using SciPy and the dedalus3 python libraries.
 - Began coding my own program to optimise the Nusselt Number in the Boussinesq equations simulations. It runs currently, but my laptop doesn't computational power to complete the program.
+
+### Week 2
+06/07/26
+- Read through part of the paper 'Optimal mixing in two-dimensional stratified plane Poiseuille flow at finite Peclet and Richardson numbers' by **F. Marcotte** and **C. P. Caulfield**
+- Obtained the working Optimal Mixing example to find the 'best' initial conditions for mixing fluids.
+
+07/07/26
+- 
