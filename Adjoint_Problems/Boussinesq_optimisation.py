@@ -17,8 +17,8 @@ Lx, Lz = 4, 1
 Nx, Nz = 256, 64
 Rayleigh = 2e6
 Prandtl = 1
-stop_sim_time = 4e-3
-max_timestep = 1e-6
+stop_sim_time = 4e-2
+max_timestep = 1e-5
 dtype = np.float64
 timestepper = d3.RK222
 
@@ -65,6 +65,8 @@ def evaluate_objective_and_gradient(control_1d):
     u['g'] = 0
 
     # Build standard Forward IVP (Identical to your original code)
+    kappa = (Rayleigh * Prandtl)**(-1/2)
+    nu = (Rayleigh / Prandtl)**(-1/2)
     ex, ez = coords.unit_vector_fields(dist)
     lift_basis = zbasis.derivative_basis(1)
     lift = lambda A: d3.Lift(A, lift_basis, -1)
