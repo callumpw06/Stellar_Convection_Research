@@ -33,4 +33,8 @@ Below, there is weekly progress reports, including; completed tasks, background 
 - Obtained the working Optimal Mixing example to find the 'best' initial conditions for mixing fluids.
 
 07/07/26
-- 
+- Fixed errors in plotting the Nusselt number against time in the Boussinesq equations folder, so it now creates a reasonable plot.
+- Created a rough plan for the structure of the paper I will write.
+
+08/07/26
+-
