@@ -85,11 +85,13 @@ T['g'] *= z * (Lz - z) # Damp noise at walls
 T['g'] += Lz - z # Add linear background
 
 # Analysis
-analysis = solver.evaluator.add_file_handler('analysis', sim_dt=10*max_timestep, max_writes=200)
+analysis = solver.evaluator.add_file_handler('analysis', sim_dt=10*max_timestep, max_writes=50)
 analysis.add_task(T, name='temperature')
 analysis.add_task(-d3.div(d3.skew(u)), name='vorticity')
 analysis.add_task(np.sqrt(u@u), name='velocity_magnitude')
 analysis.add_task(1 + d3.integ(u@ez * T)/(Lx*Lz), name='Nu') # Nusselt number
+analysis.add_task(p, name='pressure')
+analysis.add_task(-d3.integ(d3.grad(T)@ez, 'x')(z=Lz) / Lx, name='heat_flux_top')
 
 # CFL
 CFL = d3.CFL(solver, initial_dt=1e-7, cadence=10, safety=0.5, threshold=0.05,

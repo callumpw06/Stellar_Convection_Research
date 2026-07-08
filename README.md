@@ -37,4 +37,5 @@ Below, there is weekly progress reports, including; completed tasks, background 
 - Created a rough plan for the structure of the paper I will write.
 
 08/07/26
--
+- Read through 'Stellar Convection' by **Eric Graham** to gain an understanding of the roll of convection currents in stars.
+- 
