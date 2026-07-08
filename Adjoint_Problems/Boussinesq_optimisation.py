@@ -65,8 +65,6 @@ def evaluate_objective_and_gradient(control_1d):
     u['g'] = 0
 
     # Build standard Forward IVP (Identical to your original code)
-    kappa = (Rayleigh * Prandtl)**(-1/2)
-    nu = (Rayleigh / Prandtl)**(-1/2)
     ex, ez = coords.unit_vector_fields(dist)
     lift_basis = zbasis.derivative_basis(1)
     lift = lambda A: d3.Lift(A, lift_basis, -1)
@@ -92,8 +90,12 @@ def evaluate_objective_and_gradient(control_1d):
     integrated_Nu = 0.0
 
     # Run Forward Loop
+    CFL = d3.CFL(forward_solver, initial_dt=1e-7, cadence=10, safety=0.5, max_change=1.5, min_change=0.5, max_dt=max_timestep)
+    CFL.add_velocity(u)
+
     while forward_solver.proceed:
-        forward_solver.step(max_timestep)
+        timestep = CFL.compute_timestep()
+        forward_solver.step(timestep)
         
         # Save state for the backward pass
         saved_states_u.append(u['c'].copy())
@@ -139,7 +141,6 @@ def evaluate_objective_and_gradient(control_1d):
     
     # 3. Adjoint Momentum (Stable backward-in-time formulation)
     adjoint_problem.add_equation("dt(u_adj) - Prandtl*div(grad_u_adj) + grad(p_adj) + lift(tau_u2_adj) = T_adj*grad(T_fwd) + u_fwd@grad(u_adj) + grad(u_fwd)@u_adj - T_fwd*ez")
-    # ... Boundary conditions for adjoint fields (T_adj=0, u_adj=0 at walls) ...
     adjoint_problem.add_equation("T_adj(z=0) = 0")
     adjoint_problem.add_equation("u_adj(z=0) = 0")
     adjoint_problem.add_equation("T_adj(z=Lz) = 0")
@@ -183,15 +184,20 @@ if __name__ == "__main__":
 
     bnds = [(-0.1, 0.1) for _ in range(local_shape)]  # Bound the perturbation to avoid unphysical values
 
-    # Run L-BFGS-B Optimization
-    result = minimize(
-        fun=evaluate_objective_and_gradient,
-        x0=initial_guess_1d,
-        method='L-BFGS-B',
-        jac=True,  # We are providing the exact gradient
-        bounds=bnds,
-        options={'maxiter': 2, 'disp': True}
-    )
+    try:
+        # Run L-BFGS-B Optimization
+        result = minimize(
+            fun=evaluate_objective_and_gradient,
+            x0=initial_guess_1d,
+            method='L-BFGS-B',
+            jac=True, 
+            bounds=bnds,
+            options={'maxiter': 2, 'maxfun': 2}
+        )
+        optimal_perturbation = result.x.reshape((Nx, Nz))
+        
+    except StopIteration as e:
+        logger.info(f"Optimization aborted early: {e}")
 
     logger.info(f"Optimization finished. Final Objective: {-result.fun}")
     optimal_perturbation = result.x.reshape((Nx, Nz))

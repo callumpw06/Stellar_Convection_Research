@@ -38,4 +38,10 @@ Below, there is weekly progress reports, including; completed tasks, background 
 
 08/07/26
 - Read through 'Stellar Convection' by **Eric Graham** to gain an understanding of the roll of convection currents in stars.
+- Created a one-dimensional adjoint-based optimisation algorithm as a proof-of-concept for this method of optimisation.
+- Completed a write-up of this particular example, with its mathematical proof.
+- Continued work on the adjoint-based optimisation of the Boussinesq equations - still needs more work though.
+- Began reading through 'A model of magnetised and rotating convection for stellar and planetary interiors' by **L. Bessila** and **S. Mathis**.
+
+09/07/26
 - 
