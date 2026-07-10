@@ -23,6 +23,16 @@ control variable u(x) that minimizes the objective functional J(u).
 import numpy as np
 import matplotlib.pyplot as plt
 
+# --- Adjust Font Sizes for Better Readability ---
+plt.rcParams.update({
+    'font.size': 14,          # Base font size
+    'axes.titlesize': 16,     # Plot title size
+    'axes.labelsize': 14,     # X and Y label size
+    'xtick.labelsize': 12,    # X-axis tick numbers
+    'ytick.labelsize': 12,    # Y-axis tick numbers
+    'legend.fontsize': 12,    # Legend font size
+})
+
 # Problem parameters adjusted for CFL stability
 Nx = 50                # Spatial resolution
 Nt = 2500              # Time steps
@@ -75,7 +85,7 @@ def cost_function(y, u):
 # --- History Tracking ---
 cost_history = []
 u_history = []
-q_history = []  # New list to track heat flux
+q_history = []  # List to track heat flux
 capture_iters = [0, 10, 50, 99]  # Snapshots to plot later
 
 # Gradient descent loop
@@ -111,11 +121,12 @@ for k in range(iterations):
 y_final = forward_solve(u)
 
 # --- Plotting Results (2x2 Grid) ---
-fig, axs = plt.subplots(2, 2, figsize=(14, 10))
+fig, axs = plt.subplots(2, 2, figsize=(16, 12))
 
 # Plot 1 (Top Left): Final Forward Solution
 im = axs[0, 0].imshow(y_final, extent=[0, L, 0, T], origin='lower', aspect='auto', cmap='hot')
-fig.colorbar(im, ax=axs[0, 0], label='Temperature')
+cbar = fig.colorbar(im, ax=axs[0, 0])
+cbar.set_label('Temperature', fontsize=14)
 axs[0, 0].set_title('Final Forward Solution $y(x, t)$')
 axs[0, 0].set_xlabel('Position (x)')
 axs[0, 0].set_ylabel('Time (t)')
@@ -123,7 +134,7 @@ axs[0, 0].set_ylabel('Time (t)')
 # Plot 2 (Top Right): Evolution of u(x)
 colors = ['lightgray', 'lightblue', 'royalblue', 'darkblue']
 for i, (k, u_snap) in enumerate(u_history):
-    axs[0, 1].plot(x, u_snap, label=f'Iter {k}', color=colors[i], linewidth=2)
+    axs[0, 1].plot(x, u_snap, label=f'Iter {k}', color=colors[i], linewidth=2.5)
 axs[0, 1].set_title('Evolution of Control $u(x)$')
 axs[0, 1].set_xlabel('Position (x)')
 axs[0, 1].set_ylabel('Temperature $u(x)$')
@@ -131,7 +142,7 @@ axs[0, 1].legend()
 axs[0, 1].grid(True, alpha=0.3)
 
 # Plot 3 (Bottom Left): Cost Function History
-axs[1, 0].plot(range(iterations), cost_history, color='crimson', linewidth=2)
+axs[1, 0].plot(range(iterations), cost_history, color='crimson', linewidth=2.5)
 axs[1, 0].set_title('Optimizer Progress')
 axs[1, 0].set_xlabel('Iteration')
 axs[1, 0].set_ylabel('Cost Function $J$')
@@ -139,14 +150,12 @@ axs[1, 0].grid(True, alpha=0.3)
 
 # Plot 4 (Bottom Right): Evolution of Heat Flux
 for i, (k, q_snap) in enumerate(q_history):
-    axs[1, 1].plot(x, q_snap, label=f'Iter {k}', color=colors[i], linewidth=2)
+    axs[1, 1].plot(x, q_snap, label=f'Iter {k}', color=colors[i], linewidth=2.5)
 axs[1, 1].set_title('Evolution of Time-Averaged Heat Flux')
 axs[1, 1].set_xlabel('Position (x)')
 axs[1, 1].set_ylabel('Heat Flux $q(x)$')
 axs[1, 1].legend()
 axs[1, 1].grid(True, alpha=0.3)
-
-plt.tight_layout()
-plt.title('Two-Dimensional Adjoint Problem: Optimization Results')
-plt.savefig('two_dim_adjoint_results.png', dpi=300)
+plt.savefig("two_dim_adjoint_problem_results.png", dpi=300, bbox_inches='tight')
+plt.tight_layout(pad=3.0)
 plt.show()
