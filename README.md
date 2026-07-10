@@ -44,4 +44,12 @@ Below, there is weekly progress reports, including; completed tasks, background 
 - Began reading through 'A model of magnetised and rotating convection for stellar and planetary interiors' by **L. Bessila** and **S. Mathis**.
 
 09/07/26
-- 
+- Created a written proof of a special case for solving the adjoint-based maximisation method.
+- Edited the one-dimensional [example](https://github.com/callumpw06/Stellar_Convection_Research/tree/main/Examples/Adjoint_Proof-of-Concept) in light of this proof.
+
+10/07/26
+- Edited the written proof of the special case to relax some of the assumptions made to make the method more general.
+- Written up a two-dimensional [example](https://github.com/callumpw06/Stellar_Convection_Research/tree/main/Examples/Adjoint_Proof-of-Concept) of the adjoint-bases maximisation method.
+- Coded this [example](https://github.com/callumpw06/Stellar_Convection_Research/tree/main/Examples/Adjoint_Proof-of-Concept) into python, and generated its numerical results.
+
+### Week 3
