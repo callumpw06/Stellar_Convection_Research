@@ -53,3 +53,9 @@ Below, there is weekly progress reports, including; completed tasks, background 
 - Coded this [example](https://github.com/callumpw06/Stellar_Convection_Research/tree/main/Examples/Adjoint_Proof-of-Concept) into python, and generated its numerical results.
 
 ### Week 3
+13/07/26
+- Began writing up an an adjoint Boussinesq approximation problem, attempting to maximise the time averaged Nusselt number
+
+14/07/26
+- Continued this write-up - needed to linearise and re-scale the equation to calculate the gradient of J with respect to L.
+- Beginning to code this into a problem in python.
