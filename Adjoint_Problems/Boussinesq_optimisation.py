@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # ---------------- Global Parameters ----------------
 Nx, Nz = 256, 64
 Lz = 1
-Rayleigh = 5e4
+Rayleigh = 2e6
 Prandtl = 1
 nu = (Rayleigh / Prandtl)**(-1/2)
 stop_sim_time = 4e-2
@@ -97,13 +97,20 @@ def evaluate_objective_and_gradient(params):
         flow.add_property(np.sqrt(u@u)/nu, name='Re')
 
     saved_states_u, saved_states_T, saved_states_p = [], [], []
+    saved_dts = []
     
     # Integrand for objective function J (divided by L_val to map dx to d(hat{x}))
     J_integrand = d3.integ(1 + (u@ez) * T) / L_val
     J_val = 0.0
 
+    # CFL
+    CFL = d3.CFL(solver, initial_dt=1e-7, cadence=10, safety=0.5, threshold=0.05,
+                max_change=1.5, min_change=0.5, max_dt=max_timestep)
+    CFL.add_velocity(u)
+
     while solver.proceed:
-        solver.step(max_timestep)
+        timestep = CFL.compute_timestep()
+        solver.step(timestep)
 
         # Fail fast if the simulation blows up
         if np.isnan(u['c']).any():
@@ -114,10 +121,11 @@ def evaluate_objective_and_gradient(params):
         saved_states_u.append(u['c'].copy())
         saved_states_T.append(T['c'].copy())
         saved_states_p.append(p['c'].copy())
+        saved_dts.append(timestep)
         
         # Accumulate the time-averaged objective function
         spatial_J = J_integrand.evaluate()['g'][0, 0]
-        J_val += spatial_J * max_timestep
+        J_val += spatial_J * timestep
 
     if np.isnan(J_val) or np.isinf(J_val):
         logger.warning(f"Forward simulation diverged to NaN for L={L_val:.4f}. Rejecting step.")
@@ -181,11 +189,12 @@ def evaluate_objective_and_gradient(params):
         u_fwd['c'] = saved_states_u.pop()
         T_fwd['c'] = saved_states_T.pop()
         p_fwd['c'] = saved_states_p.pop()
+        backward_timestep = saved_dts.pop()
         
-        adjoint_solver.step(max_timestep)
+        adjoint_solver.step(backward_timestep)
         
         spatial_integral = grad_L_integrand.evaluate()['g'][0, 0]
-        grad_L_val += spatial_integral * max_timestep
+        grad_L_val += spatial_integral * backward_timestep
 
     # SciPy minimize looks for minimum, but we want to maximize Nusselt number. 
     # Therefore, return negative J and negative Gradient.
@@ -212,8 +221,8 @@ def tracking_callback(xk):
 if __name__ == "__main__":
     # ---------------- Custom Gradient Ascent Setup ----------------
     L_current = 2.9        # Initial guess
-    alpha = 10            # Learning rate (You may need to tune this higher or lower)
-    max_iterations = 1    # Number of optimization steps
+    alpha = 0.1            # Learning rate (You may need to tune this higher or lower)
+    max_iterations = 2    # Number of optimization steps
     
     L_history = [L_current]
     J_history = []
