@@ -3,6 +3,7 @@ import dedalus.public as d3
 from scipy.optimize import minimize
 import logging
 import matplotlib.pyplot as plt
+from mpi4py import MPI
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -123,8 +124,11 @@ def evaluate_objective_and_gradient(params):
         saved_states_p.append(p['c'].copy())
         saved_dts.append(timestep)
         
-        # Accumulate the time-averaged objective function
-        spatial_J = J_integrand.evaluate()['g'][0, 0]
+        # Accumulate the time-averaged objective function safely across all cores
+        local_J_array = J_integrand.evaluate()['g']
+        local_J = local_J_array[0, 0] if local_J_array.size > 0 else 0.0
+        spatial_J = dist.comm.allreduce(local_J, op=MPI.SUM)
+        
         J_val += spatial_J * timestep
 
     if np.isnan(J_val) or np.isinf(J_val):
@@ -193,7 +197,10 @@ def evaluate_objective_and_gradient(params):
         
         adjoint_solver.step(backward_timestep)
         
-        spatial_integral = grad_L_integrand.evaluate()['g'][0, 0]
+        local_grad_array = grad_L_integrand.evaluate()['g']
+        local_grad = local_grad_array[0, 0] if local_grad_array.size > 0 else 0.0
+        spatial_integral = dist.comm.allreduce(local_grad, op=MPI.SUM)
+        
         grad_L_val += spatial_integral * backward_timestep
 
     # SciPy minimize looks for minimum, but we want to maximize Nusselt number. 
@@ -222,7 +229,7 @@ if __name__ == "__main__":
     # ---------------- Custom Gradient Ascent Setup ----------------
     L_current = 2.9        # Initial guess
     alpha = 0.1            # Learning rate (You may need to tune this higher or lower)
-    max_iterations = 5    # Number of optimization steps
+    max_iterations = 2    # Number of optimization steps
     
     L_history = [L_current]
     J_history = []
@@ -253,27 +260,28 @@ if __name__ == "__main__":
     logger.info("Optimization Loop Complete.")
     
     # ---------------- Plotting ----------------
-    logger.info("Generating optimization history plot...")
-    
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-    
-    # Plot L history
-    ax1.plot(range(len(L_history)), L_history, marker='o', color='b', linewidth=2)
-    ax1.set_title('Domain Width (L) over Iterations')
-    ax1.set_xlabel('Iteration Number')
-    ax1.set_ylabel('L')
-    ax1.grid(True, linestyle='--', alpha=0.7)
-    
-    # Plot J history
-    ax2.plot(range(len(J_history)), J_history, marker='s', color='r', linewidth=2)
-    ax2.set_title('Objective Function (J) over Iterations')
-    ax2.set_xlabel('Iteration Number')
-    ax2.set_ylabel('Nusselt Number (J)')
-    ax2.grid(True, linestyle='--', alpha=0.7)
-    
-    plot_filename = 'gradient_ascent_progress.png'
-    plt.tight_layout()
-    plt.savefig(plot_filename, dpi=300)
-    plt.close()
-    
-    logger.info(f"Plot saved successfully as '{plot_filename}'")
+    if dist.comm.rank == 0:  # Only the root process should handle plotting
+        logger.info("Generating optimization history plot...")
+        
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        
+        # Plot L history
+        ax1.plot(range(len(L_history)), L_history, marker='o', color='b', linewidth=2)
+        ax1.set_title('Domain Width (L) over Iterations')
+        ax1.set_xlabel('Iteration Number')
+        ax1.set_ylabel('L')
+        ax1.grid(True, linestyle='--', alpha=0.7)
+        
+        # Plot J history
+        ax2.plot(range(len(J_history)), J_history, marker='s', color='r', linewidth=2)
+        ax2.set_title('Objective Function (J) over Iterations')
+        ax2.set_xlabel('Iteration Number')
+        ax2.set_ylabel('Nusselt Number (J)')
+        ax2.grid(True, linestyle='--', alpha=0.7)
+        
+        plot_filename = 'gradient_ascent_progress.png'
+        plt.tight_layout()
+        plt.savefig(plot_filename, dpi=300)
+        plt.close()
+        
+        logger.info(f"Plot saved successfully as '{plot_filename}'")
