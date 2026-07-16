@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ---------------- Global Parameters ----------------
-Nx, Nz = 256, 64
+Nx, Nz = 512, 128
 Lz = 1
 Rayleigh = 2e6
 Prandtl = 1
@@ -229,7 +229,7 @@ if __name__ == "__main__":
     # ---------------- Custom Gradient Ascent Setup ----------------
     L_current = 2.9        # Initial guess
     alpha = 0.1            # Learning rate (You may need to tune this higher or lower)
-    max_iterations = 10    # Number of optimization steps
+    max_iterations = 2    # Number of optimization steps
     
     L_history = [L_current]
     J_history = []
@@ -264,6 +264,9 @@ if __name__ == "__main__":
         logger.info("Generating optimization history plot...")
         
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+        # Convert the negative integrated values to positive time-averaged Nusselt numbers
+        time_averaged_Nu_history = [-j / stop_sim_time for j in J_history]
         
         # Plot L history
         ax1.plot(range(len(L_history)), L_history, marker='o', color='b', linewidth=2)
@@ -273,7 +276,7 @@ if __name__ == "__main__":
         ax1.grid(True, linestyle='--', alpha=0.7)
         
         # Plot J history
-        ax2.plot(range(len(J_history)), J_history, marker='s', color='r', linewidth=2)
+        ax2.plot(range(len(time_averaged_Nu_history)), time_averaged_Nu_history, marker='s', color='r', linewidth=2)
         ax2.set_title('Objective Function (J) over Iterations')
         ax2.set_xlabel('Iteration Number')
         ax2.set_ylabel('Nusselt Number (J)')
