@@ -59,3 +59,7 @@ Below, there is weekly progress reports, including; completed tasks, background 
 14/07/26
 - Continued this write-up - needed to linearise and re-scale the equation to calculate the gradient of J with respect to L.
 - Beginning to code this into a problem in python.
+
+15/07/26
+- Completed my code to optimise this domain width, with a limited number of iterations for now due to computational restraints.
+- 
