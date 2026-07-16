@@ -229,7 +229,7 @@ if __name__ == "__main__":
     # ---------------- Custom Gradient Ascent Setup ----------------
     L_current = 2.9        # Initial guess
     alpha = 0.1            # Learning rate (You may need to tune this higher or lower)
-    max_iterations = 2    # Number of optimization steps
+    max_iterations = 10    # Number of optimization steps
     
     L_history = [L_current]
     J_history = []

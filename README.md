@@ -62,4 +62,9 @@ Below, there is weekly progress reports, including; completed tasks, background 
 
 15/07/26
 - Completed my code to optimise this domain width, with a limited number of iterations for now due to computational restraints.
-- 
+
+16/07/16
+- Pulled code onto Hamilton8 - queued jobs to run using MPI. It needs optimising more though when running on CPUs - haven't tried it on the GPU node yet though.
+- Looked into the mathematical theory behind why we get optimal heat transfer at certain values of L.
+
+17/07/26
