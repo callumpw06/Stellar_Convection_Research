@@ -19,7 +19,7 @@ field_to_plot = 'temperature'
 output_movie = 'temperature_fixed.mp4'
 
 # Dimensions
-extent = [0, 4, 0, 1]
+extent = [0, 1.6912, 0, 1]
 
 print(f"Searching for data in '/{data_folder}'...")
 

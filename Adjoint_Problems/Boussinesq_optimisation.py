@@ -10,12 +10,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ---------------- Global Parameters ----------------
-Nx, Nz = 512, 128
+Nx, Nz = 256, 64
 Lz = 1
 Rayleigh = 2e6
 Prandtl = 1
 nu = (Rayleigh / Prandtl)**(-1/2)
-stop_sim_time = 4e-2
+stop_sim_time = 5e-2
 max_timestep = 1e-5
 dtype = np.float64
 timestepper = d3.RK222
@@ -74,7 +74,13 @@ def evaluate_objective_and_gradient(params):
     solver.stop_sim_time = stop_sim_time
     
     # Standard conductive profile initial conditions
-    perturbation = 0.01 * np.sin(2 * np.pi * x / L_val) * np.sin(np.pi * z)
+    # Generate reproducible local random noise for each MPI rank
+    local_shape = x.shape
+    local_noise = np.random.RandomState(seed=42 + dist.comm.rank).uniform(-0.01, 0.01, size=local_shape)
+    
+    # Apply noise in x, but restrict to boundaries in z
+    perturbation = local_noise * np.sin(np.pi * z)
+    
     T['g'] = 1 - z + perturbation
     u['g'] = 0
 
@@ -124,12 +130,12 @@ def evaluate_objective_and_gradient(params):
         saved_states_p.append(p['c'].copy())
         saved_dts.append(timestep)
         
-        # Accumulate the time-averaged objective function safely across all cores
+        # Accumulate the time-averaged objective function safely
         local_J_array = J_integrand.evaluate()['g']
-        local_J = local_J_array[0, 0] if local_J_array.size > 0 else 0.0
-        spatial_J = dist.comm.allreduce(local_J, op=MPI.SUM)
+        # .flatten() safely extracts the scalar value regardless of array shape
+        local_J = local_J_array.flatten()[0] if local_J_array.size > 0 else 0.0
         
-        J_val += spatial_J * timestep
+        J_val += local_J * timestep
 
     if np.isnan(J_val) or np.isinf(J_val):
         logger.warning(f"Forward simulation diverged to NaN for L={L_val:.4f}. Rejecting step.")
@@ -198,10 +204,9 @@ def evaluate_objective_and_gradient(params):
         adjoint_solver.step(backward_timestep)
         
         local_grad_array = grad_L_integrand.evaluate()['g']
-        local_grad = local_grad_array[0, 0] if local_grad_array.size > 0 else 0.0
-        spatial_integral = dist.comm.allreduce(local_grad, op=MPI.SUM)
+        local_grad = local_grad_array.flatten()[0] if local_grad_array.size > 0 else 0.0
         
-        grad_L_val += spatial_integral * backward_timestep
+        grad_L_val += local_grad * backward_timestep
 
     # SciPy minimize looks for minimum, but we want to maximize Nusselt number. 
     # Therefore, return negative J and negative Gradient.
@@ -227,9 +232,9 @@ def tracking_callback(xk):
 
 if __name__ == "__main__":
     # ---------------- Custom Gradient Ascent Setup ----------------
-    L_current = 2.9        # Initial guess
-    alpha = 0.1            # Learning rate (You may need to tune this higher or lower)
-    max_iterations = 2    # Number of optimization steps
+    L_current = 2.0        # Initial guess
+    alpha = 0.01            # Learning rate (You may need to tune this higher or lower)
+    max_iterations = 10    # Number of optimization steps
     
     L_history = [L_current]
     J_history = []
