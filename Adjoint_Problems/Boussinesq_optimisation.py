@@ -208,15 +208,13 @@ def evaluate_objective_and_gradient(params):
         
         grad_L_val += local_grad * backward_timestep
 
-    # SciPy minimize looks for minimum, but we want to maximize Nusselt number. 
-    # Therefore, return negative J and negative Gradient.
-    objective_to_minimize = -J_val
+    objective_to_maximise = J_val
     gradient_to_return = np.array([grad_L_val])
     
     gradient_to_return = np.nan_to_num(gradient_to_return, nan=0.0, posinf=1e5, neginf=-1e5)
 
     logger.info(f"Iteration finished! Current L: {L_val:.4f}, J: {J_val:.4f}, Grad: {gradient_to_return[0]:.4e}")
-    return objective_to_minimize, gradient_to_return
+    return objective_to_maximise, gradient_to_return
 
 # List to track L over iterations (initialized with the starting guess)
 L_history = []
@@ -233,16 +231,18 @@ def tracking_callback(xk):
 if __name__ == "__main__":
     # ---------------- Custom Gradient Ascent Setup ----------------
     L_current = 2.0        # Initial guess
-    alpha = 0.01            # Learning rate (You may need to tune this higher or lower)
-    max_iterations = 10    # Number of optimization steps
+    
+    max_iterations = 5    # Number of optimization steps
     
     L_history = [L_current]
-    J_history = []
+    J_history = [0.0]  # Initialize with a dummy value for the first iteration
     
     logger.info("Starting explicit Gradient Ascent Loop...")
     
     for i in range(max_iterations):
         logger.info(f"========== Iteration {i+1}/{max_iterations} ==========")
+
+        alpha = 0.01/(i + 1)            # Learning rate (You may need to tune this higher or lower)
         
         # 1. Evaluate the system
         J_val, grad_array = evaluate_objective_and_gradient([L_current])
@@ -268,10 +268,10 @@ if __name__ == "__main__":
     if dist.comm.rank == 0:  # Only the root process should handle plotting
         logger.info("Generating optimization history plot...")
         
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5))
 
         # Convert the negative integrated values to positive time-averaged Nusselt numbers
-        time_averaged_Nu_history = [-j / stop_sim_time for j in J_history]
+        time_averaged_Nu_history = [j / stop_sim_time for j in J_history]
         
         # Plot L history
         ax1.plot(range(len(L_history)), L_history, marker='o', color='b', linewidth=2)
@@ -286,6 +286,14 @@ if __name__ == "__main__":
         ax2.set_xlabel('Iteration Number')
         ax2.set_ylabel('Nusselt Number (J)')
         ax2.grid(True, linestyle='--', alpha=0.7)
+
+        # Plot J against L to visualize the relationship
+        fig2, ax3 = plt.subplots(figsize=(6, 5))
+        ax3.plot(L_history, time_averaged_Nu_history, marker='^', color='g', linewidth=2)
+        ax3.set_title('Objective Function (J) vs Domain Width (L)')
+        ax3.set_xlabel('L')
+        ax3.set_ylabel('Nusselt Number (J)')
+        ax3.grid(True, linestyle='--', alpha=0.7)
         
         plot_filename = 'gradient_ascent_progress.png'
         plt.tight_layout()
