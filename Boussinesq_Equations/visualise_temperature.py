@@ -7,6 +7,7 @@ by the simulation and creates a contour plot of the temperature field at a speci
 import h5py
 import numpy as np
 import pathlib
+import re
 import matplotlib
 matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
@@ -23,7 +24,14 @@ extent = [0, 4, 0, 1]
 
 print(f"Searching for data in '/{data_folder}'...")
 
-files = sorted(pathlib.Path(data_folder).glob("*.h5"))
+# --- NEW SORTING LOGIC ---
+def extract_numbers(path):
+    # Extracts all numbers from the filename to use as a sorting key
+    return [int(c) if c.isdigit() else c for c in re.split('([0-9]+)', path.name)]
+
+# Sort the files using the custom key
+files = sorted(pathlib.Path(data_folder).glob("*.h5"), key=extract_numbers)
+# -------------------------
 if not files:
     raise FileNotFoundError(f"No .h5 files found in {data_folder}.")
 

@@ -54,7 +54,7 @@ Below, there is weekly progress reports, including; completed tasks, background 
 
 ### Week 3
 13/07/26
-- Began writing up an an adjoint Boussinesq approximation problem, attempting to maximise the time averaged Nusselt number
+- Began writing up an an adjoint Boussinesq approximation problem, attempting to maximise the time-averaged Nusselt number
 
 14/07/26
 - Continued this write-up - needed to linearise and re-scale the equation to calculate the gradient of J with respect to L.
@@ -68,3 +68,12 @@ Below, there is weekly progress reports, including; completed tasks, background 
 - Looked into the mathematical theory behind why we get optimal heat transfer at certain values of L.
 
 17/07/26
+- Continued working to get numerical results.
+
+### Week 4
+20/07/26
+- Amended elements of the proof in the paper to account for non-linear system and how this affects our adjoint problem.
+- Edited adjoint code to account for fluctuating round the maximum.
+- Create code to plot J against L for our problem to help visualise where the maximums are.
+
+21/07/26

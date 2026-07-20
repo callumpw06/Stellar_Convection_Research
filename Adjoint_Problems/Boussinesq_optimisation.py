@@ -10,12 +10,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ---------------- Global Parameters ----------------
-Nx, Nz = 256, 64
+Nx, Nz = 128, 32
 Lz = 1
 Rayleigh = 2e6
 Prandtl = 1
 nu = (Rayleigh / Prandtl)**(-1/2)
-stop_sim_time = 5e-2
+stop_sim_time = 1e-1
 max_timestep = 1e-5
 dtype = np.float64
 timestepper = d3.RK222
@@ -242,7 +242,7 @@ if __name__ == "__main__":
     for i in range(max_iterations):
         logger.info(f"========== Iteration {i+1}/{max_iterations} ==========")
 
-        alpha = 0.01/(i + 1)            # Learning rate (You may need to tune this higher or lower)
+        alpha = 0.01          # Learning rate (You may need to tune this higher or lower)
         
         # 1. Evaluate the system
         J_val, grad_array = evaluate_objective_and_gradient([L_current])
@@ -288,11 +288,10 @@ if __name__ == "__main__":
         ax2.grid(True, linestyle='--', alpha=0.7)
 
         # Plot J against L to visualize the relationship
-        fig2, ax3 = plt.subplots(figsize=(6, 5))
-        ax3.plot(L_history, time_averaged_Nu_history, marker='^', color='g', linewidth=2)
+        ax3.plot(L_history[1:], time_averaged_Nu_history[1:], marker='^', color='g', linewidth=2)
         ax3.set_title('Objective Function (J) vs Domain Width (L)')
         ax3.set_xlabel('L')
-        ax3.set_ylabel('Nusselt Number (J)')
+        ax3.set_ylabel('Time-Averaged Nusselt Number (J)')
         ax3.grid(True, linestyle='--', alpha=0.7)
         
         plot_filename = 'gradient_ascent_progress.png'
