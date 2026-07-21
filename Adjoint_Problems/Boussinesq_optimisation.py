@@ -272,17 +272,24 @@ if __name__ == "__main__":
         
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5))
 
-        # Convert the negative integrated values to positive time-averaged Nusselt numbers
-        time_averaged_Nu_history = [j / stop_sim_time for j in J_history]
+        # We must divide by the actual integrated time rather than the full stop_sim_time
+        integrated_time_duration = stop_sim_time - start_averaging_time
         
-        # Plot L history
-        ax1.plot(range(len(L_history)), L_history, marker='o', color='b', linewidth=2)
+        # Remove the dummy 0.0 at the start of J_history
+        real_J_history = J_history[1:]
+        time_averaged_Nu_history = [j / integrated_time_duration for j in real_J_history]
+        
+        # L_history has one extra element at the end (the final updated L that hasn't been evaluated yet)
+        evaluated_L_history = L_history[:-1]
+        
+        # Plot L history (evaluated ones)
+        ax1.plot(range(len(evaluated_L_history)), evaluated_L_history, marker='o', color='b', linewidth=2)
         ax1.set_title('Domain Width (L) over Iterations')
         ax1.set_xlabel('Iteration Number')
         ax1.set_ylabel('L')
         ax1.grid(True, linestyle='--', alpha=0.7)
         
-        # Plot J history
+        # Plot J history (real evaluated J's, starting at iteration 0)
         ax2.plot(range(len(time_averaged_Nu_history)), time_averaged_Nu_history, marker='s', color='r', linewidth=2)
         ax2.set_title('Objective Function (J) over Iterations')
         ax2.set_xlabel('Iteration Number')
@@ -290,7 +297,7 @@ if __name__ == "__main__":
         ax2.grid(True, linestyle='--', alpha=0.7)
 
         # Plot J against L to visualize the relationship
-        ax3.plot(L_history[1:], time_averaged_Nu_history[1:], marker='^', color='g', linewidth=2)
+        ax3.plot(evaluated_L_history, time_averaged_Nu_history, marker='^', color='g', linewidth=2)
         ax3.set_title('Objective Function (J) vs Domain Width (L)')
         ax3.set_xlabel('L')
         ax3.set_ylabel('Time-Averaged Nusselt Number (J)')
