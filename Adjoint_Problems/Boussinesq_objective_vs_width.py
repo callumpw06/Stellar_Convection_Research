@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ---------------- Global Parameters ----------------
-Nx, Nz = 128, 32
+Nx, Nz = 256, 64
 Lz = 1
 Rayleigh = 2e4
 Prandtl = 1
@@ -119,7 +119,7 @@ def forward_problem(params):
 
 if __name__ == "__main__":
 
-    L_range = np.linspace(1.0, 4.0, 15)
+    L_range = np.linspace(0.5, 3.0, 5)
 
     J_values = []
     for L_val in L_range:
@@ -127,26 +127,31 @@ if __name__ == "__main__":
         J_values.append(J_val)
     
     # --- Curve of Best Fit Calculation ---
-    coefficients = np.polyfit(L_range, J_values, 10)
+    # With 15 points, max degree is 14, but a 4th-degree polynomial 
+    # avoids wild oscillations and captures the physical trend cleanly.
+    coefficients = np.polyfit(L_range, J_values, 4)
     polynomial = np.poly1d(coefficients)
     
-    # Generate a high-resolution array of L values for a smooth curve
+    # Generate smooth L values and convert them to wavenumber space (k = 2π/L)
     L_smooth = np.linspace(min(L_range), max(L_range), 200)
+    k_smooth = 2 * np.pi / L_smooth
     J_smooth = polynomial(L_smooth)
+    
+    # Compute wavenumbers for the scatter points
+    k_range = 2 * np.pi / L_range
     # -------------------------------------
 
-    # Plotting the objective function J against L
+    # Plotting the objective function J against wavenumber k
     plt.figure(figsize=(8, 5))
     
-    # Plot the raw data points as scatter dots
-    plt.plot(L_range, J_values, marker='o', linestyle='', color='b', label='Simulated Data')
+    # Plot raw data and smooth curve using the SAME X-axis (wavenumber k)
+    plt.plot(k_range, J_values, marker='o', linestyle='', color='b', label='Simulated Data')
+    plt.plot(k_smooth, J_smooth, linestyle='-', color='r', label='Curve of best fit (4th degree polynomial)')
     
-    # Plot the smooth curve of best fit
-    plt.plot(L_smooth, J_smooth, linestyle='-', color='r', label='Cubic Fit')
-    
-    plt.title('Objective Function (J) vs Domain Width (L)')
-    plt.xlabel('Domain Width (L)')
+    plt.title('Objective Function (J) vs Wavenumber (k = 2π/L)')
+    plt.xlabel('Wavenumber (k = 2π/L)')
     plt.ylabel('Time-Averaged Nusselt Number (J)')
     plt.legend()
     plt.grid(True)
-    plt.savefig('objective_function_vs_width.png', dpi=300, bbox_inches='tight')
+    plt.savefig('objective_function_vs_wavenumber.png', dpi=300, bbox_inches='tight')
+    plt.show()

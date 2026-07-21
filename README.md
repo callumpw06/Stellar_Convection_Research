@@ -77,3 +77,7 @@ Below, there is weekly progress reports, including; completed tasks, background 
 - Create code to plot J against L for our problem to help visualise where the maximums are.
 
 21/07/26
+- Continued to work on optimisation algorithm - gradient expression is wrong.
+- Created code to plot J against L to recreate graph in Sondak paper.
+
+22/07/26
