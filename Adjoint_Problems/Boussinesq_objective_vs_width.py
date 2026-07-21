@@ -119,7 +119,8 @@ def forward_problem(params):
 
 if __name__ == "__main__":
 
-    L_range = np.linspace(0.5, 3.0, 5)
+    # Use at least 15 points so the 4th-degree polynomial has enough data to find a trend
+    L_range = np.linspace(0.5, 3.0, 15)
 
     J_values = []
     for L_val in L_range:
@@ -127,31 +128,45 @@ if __name__ == "__main__":
         J_values.append(J_val)
     
     # --- Curve of Best Fit Calculation ---
-    # With 15 points, max degree is 14, but a 4th-degree polynomial 
-    # avoids wild oscillations and captures the physical trend cleanly.
     coefficients = np.polyfit(L_range, J_values, 4)
     polynomial = np.poly1d(coefficients)
     
-    # Generate smooth L values and convert them to wavenumber space (k = 2π/L)
+    # Generate smooth L values 
     L_smooth = np.linspace(min(L_range), max(L_range), 200)
-    k_smooth = 2 * np.pi / L_smooth
     J_smooth = polynomial(L_smooth)
     
-    # Compute wavenumbers for the scatter points
+    # Convert to wavenumber space (k = 2π/L)
     k_range = 2 * np.pi / L_range
+    k_smooth = 2 * np.pi / L_smooth
+    
+    # Sort the wavenumber arrays to prevent Matplotlib from drawing the line backwards
+    sort_idx = np.argsort(k_smooth)
+    k_smooth_sorted = k_smooth[sort_idx]
+    J_smooth_sorted = J_smooth[sort_idx]
     # -------------------------------------
 
-    # Plotting the objective function J against wavenumber k
-    plt.figure(figsize=(8, 5))
+    # Setup the figure with 1 row and 2 columns
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
     
-    # Plot raw data and smooth curve using the SAME X-axis (wavenumber k)
-    plt.plot(k_range, J_values, marker='o', linestyle='', color='b', label='Simulated Data')
-    plt.plot(k_smooth, J_smooth, linestyle='-', color='r', label='Curve of best fit (4th degree polynomial)')
+    # --- Subplot 1: J vs Domain Width (L) ---
+    ax1.plot(L_range, J_values, marker='o', linestyle='', color='b', label='Simulated Data')
+    ax1.plot(L_smooth, J_smooth, linestyle='-', color='r', label='Curve of best fit (4th degree)')
+    ax1.set_title('Objective Function (J) vs Domain Width (L)')
+    ax1.set_xlabel('Domain Width (L)')
+    ax1.set_ylabel('Time-Averaged Nusselt Number (J)')
+    ax1.legend()
+    ax1.grid(True)
     
-    plt.title('Objective Function (J) vs Wavenumber (k = 2π/L)')
-    plt.xlabel('Wavenumber (k = 2π/L)')
-    plt.ylabel('Time-Averaged Nusselt Number (J)')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig('objective_function_vs_wavenumber.png', dpi=300, bbox_inches='tight')
+    # --- Subplot 2: J vs Wavenumber (k) ---
+    ax2.plot(k_range, J_values, marker='o', linestyle='', color='b', label='Simulated Data')
+    ax2.plot(k_smooth_sorted, J_smooth_sorted, linestyle='-', color='r', label='Curve of best fit (4th degree)')
+    ax2.set_title('Objective Function (J) vs Wavenumber (k = 2π/L)')
+    ax2.set_xlabel('Wavenumber (k = 2π/L)')
+    ax2.set_ylabel('Time-Averaged Nusselt Number (J)')
+    ax2.legend()
+    ax2.grid(True)
+    
+    # Adjust layout to prevent overlapping text and save
+    plt.tight_layout()
+    plt.savefig('objective_function_subplots.png', dpi=300, bbox_inches='tight')
     plt.show()
