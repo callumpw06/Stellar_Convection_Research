@@ -15,8 +15,8 @@ Lz = 1
 Rayleigh = 2e4
 Prandtl = 1
 nu = (Rayleigh / Prandtl)**(-1/2)
-stop_sim_time = 1
-start_averaging_time = 5e-1  
+stop_sim_time = 1.0
+burn_in_time = 0.8  # Time given for the fluid to reach steady-state before optimizing
 max_timestep = 1e-4
 dtype = np.float64
 timestepper = d3.RK222
@@ -26,7 +26,6 @@ dist = d3.Distributor(coords, dtype=dtype)
 ex, ez = coords.unit_vector_fields(dist)
 
 def evaluate_objective_and_gradient(params):
-    # Isolate L as the only optimization parameter
     L_val = params[0]
     
     if np.isnan(L_val) or np.isinf(L_val) or L_val <= 0:
@@ -36,7 +35,6 @@ def evaluate_objective_and_gradient(params):
     logger.info(f"--- Starting Forward Pass for L = {L_val:.4f} ---")
 
     # ---------------- Setup Native Fields & Bases ----------------
-    # Rebuilding bases dynamically allows native Dedalus operators to work on [0, L]
     xbasis = d3.RealFourier(coords['x'], size=Nx, bounds=(0, L_val), dealias=3/2)
     zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, 1), dealias=3/2)
     x, z = dist.local_grids(xbasis, zbasis)
@@ -74,44 +72,21 @@ def evaluate_objective_and_gradient(params):
     solver = problem.build_solver(timestepper)
     solver.stop_sim_time = stop_sim_time
     
-    # Standard conductive profile initial conditions
-    # Generate reproducible local random noise for each MPI rank
-    #local_shape = x.shape
-    #local_noise = np.random.RandomState(seed=42 + dist.comm.rank).uniform(-0.01, 0.01, size=local_shape)
-    
-    # Apply noise in x, but restrict to boundaries in z
-    perturbation = 0.01 * np.cos(2 * np.pi * x / L_val) * np.sin(np.pi * z)
+    # Superposition perturbation to seed natural convection evenly
+    perturbation = 0.0
+    for n in range(1, 6):
+        perturbation += (0.01 / n) * np.cos(2 * n * np.pi * x / L_val) * np.sin(np.pi * z)
     
     T['g'] = 1 - z + perturbation
     u['g'] = 0
 
-    if i == max_iterations - 1:
-        # Analysis
-        analysis = solver.evaluator.add_file_handler('analysis', sim_dt=10*max_timestep, max_writes=50)
-        analysis.add_task(T, name='temperature')
-        analysis.add_task(-d3.div(d3.skew(u)), name='vorticity')
-        analysis.add_task(np.sqrt(u@u), name='velocity_magnitude')
-        analysis.add_task(1 + d3.integ(u@ez * T)/(L_val*Lz), name='Nu') # Nusselt number
-        analysis.add_task(p, name='pressure')
-        analysis.add_task(-d3.integ(d3.grad(T)@ez, 'x')(z=Lz) / L_val, name='heat_flux_top')
-
-        # CFL
-        CFL = d3.CFL(solver, initial_dt=1e-7, cadence=10, safety=0.5, threshold=0.05,
-                    max_change=1.5, min_change=0.5, max_dt=max_timestep)
-        CFL.add_velocity(u)
-
-        # Flow properties
-        flow = d3.GlobalFlowProperty(solver, cadence=10)
-        flow.add_property(np.sqrt(u@u)/nu, name='Re')
-
     saved_states_u, saved_states_T, saved_states_p = [], [], []
     saved_dts = []
     
-    # Integrand for objective function J (divided by L_val to map dx to d(hat{x}))
     J_integrand = d3.integ(1 + (u@ez) * T) / L_val
     J_val = 0.0
+    integrated_time = 0.0
 
-    # CFL
     CFL = d3.CFL(solver, initial_dt=1e-7, cadence=10, safety=0.5, threshold=0.05,
                 max_change=1.5, min_change=0.5, max_dt=max_timestep)
     CFL.add_velocity(u)
@@ -120,27 +95,25 @@ def evaluate_objective_and_gradient(params):
         timestep = CFL.compute_timestep()
         solver.step(timestep)
 
-        # Fail fast if the simulation blows up
         if np.isnan(u['c']).any():
-            logger.warning(f"Forward simulation blew up at t={solver.sim_time:.4f} for L={L_val:.4f}. Rejecting step.")
+            logger.warning(f"Forward simulation blew up at t={solver.sim_time:.4f}. Rejecting step.")
             return 1e9, np.zeros_like(params)
         
-        # Save states for the adjoint pass
-        saved_states_u.append(u['c'].copy())
-        saved_states_T.append(T['c'].copy())
-        saved_states_p.append(p['c'].copy())
-        saved_dts.append(timestep)
-        
-        # Accumulate the time-averaged objective function safely
-        if solver.sim_time > start_averaging_time:
+        # BURN-IN PHASE: Only save states and accumulate J AFTER the fluid has settled
+        if solver.sim_time > burn_in_time:
+            saved_states_u.append(u['c'].copy())
+            saved_states_T.append(T['c'].copy())
+            saved_states_p.append(p['c'].copy())
+            saved_dts.append(timestep)
+            
             local_J_array = J_integrand.evaluate()['g']
-            # .flatten() safely extracts the scalar value regardless of array shape
             local_J = local_J_array.flatten()[0] if local_J_array.size > 0 else 0.0
             
             J_val += local_J * timestep
+            integrated_time += timestep
 
     if np.isnan(J_val) or np.isinf(J_val):
-        logger.warning(f"Forward simulation diverged to NaN for L={L_val:.4f}. Rejecting step.")
+        logger.warning("Forward simulation diverged to NaN. Rejecting step.")
         return 1e9, np.zeros_like(params)
 
     # ---------------- Adjoint Pass ----------------
@@ -177,10 +150,7 @@ def evaluate_objective_and_gradient(params):
     adjoint_problem.add_equation("integ(p_adj) = 0")
 
     adjoint_solver = adjoint_problem.build_solver(timestepper)
-    
-    # ---------------- Gradient Calculation ----------------
-    # Dedalus native derivatives (w.r.t x). 
-    # Mapped directly to d(hat{x}) through analytical simplification.
+
     dx_u = d3.Differentiate(u_fwd, coords['x'])
     dxx_u = d3.Differentiate(dx_u, coords['x'])
     dx_p = d3.Differentiate(p_fwd, coords['x'])
@@ -190,13 +160,14 @@ def evaluate_objective_and_gradient(params):
     ux_fwd = u_fwd@ex
 
     term1 = p_adj * (dx_u @ ex)
-    term2 = u_adj @ ( ux_fwd * dx_u + dx_p * ex - 2 * Prandtl * dxx_u )
-    term3 = T_adj * ( ux_fwd * dx_T - 2 * dxx_T )
+    term2 = u_adj @ ( ux_fwd * dx_u + dx_p * ex + 2 * Prandtl * dxx_u )
+    term3 = T_adj * ( ux_fwd * dx_T + 2 * dxx_T )
 
-    # Divide by L_val to account for spatial dx vs d(hat{x})
     grad_L_integrand = d3.integ(term1 + term2 + term3) / L_val
 
     grad_L_val = 0.0
+
+    # Integrate backward through ONLY the stable optimization window
     while len(saved_states_u) > 0:
         u_fwd['c'] = saved_states_u.pop()
         T_fwd['c'] = saved_states_T.pop()
@@ -210,93 +181,75 @@ def evaluate_objective_and_gradient(params):
         
         grad_L_val += local_grad * backward_timestep
 
-    objective_to_maximise = J_val
-    gradient_to_return = np.array([grad_L_val])
+    # Scale the objective and the gradient to represent true time-averages
+    objective_to_maximise = J_val / integrated_time if integrated_time > 0 else 0.0
+    final_grad = grad_L_val / integrated_time if integrated_time > 0 else 0.0
+    gradient_to_return = np.array([final_grad])
     
     gradient_to_return = np.nan_to_num(gradient_to_return, nan=0.0, posinf=1e5, neginf=-1e5)
 
-    logger.info(f"Iteration finished! Current L: {L_val:.4f}, J: {J_val:.4f}, Grad: {gradient_to_return[0]:.4e}")
+    logger.info(f"Iteration finished! Current L: {L_val:.4f}, J: {objective_to_maximise:.4f}, Grad: {gradient_to_return[0]:.4e}")
     return objective_to_maximise, gradient_to_return
 
-# List to track L over iterations (initialized with the starting guess)
 L_history = []
 
 def tracking_callback(xk):
-    """
-    This function is called by the optimizer after every successful iteration.
-    xk is the current parameter array.
-    """
     current_L = xk[0]
     L_history.append(current_L)
     logger.info(f"--- Iteration Complete. Current L appended to history: {current_L:.4f} ---")
 
 if __name__ == "__main__":
     # ---------------- Custom Gradient Ascent Setup ----------------
-    L_current = 2.0        # Initial guess
-    
-    max_iterations = 5    # Number of optimization steps
+    L_current = 2.0        
+    max_iterations = 5    
     
     L_history = [L_current]
-    J_history = [0.0]  # Initialize with a dummy value for the first iteration
+    J_history = [0.0]  
     
     logger.info("Starting explicit Gradient Ascent Loop...")
     
     for i in range(max_iterations):
         logger.info(f"========== Iteration {i+1}/{max_iterations} ==========")
 
-        alpha = 0.1          # Learning rate (You may need to tune this higher or lower)
+        alpha = 0.1          
         
-        # 1. Evaluate the system
         J_val, grad_array = evaluate_objective_and_gradient([L_current])
         J_history.append(J_val)
         
         dJ_dL = grad_array[0]
         
-        # 2. Apply the paper's update rule: L_{n+1} = L_n + alpha * dJ/dL
         L_new = L_current + (alpha * dJ_dL)
-        
-        # 3. Enforce physical boundaries so L doesn't go negative or infinitely huge
         L_new = np.clip(L_new, 0.5, 10.0)
         
         logger.info(f"Update: L changed from {L_current:.4f} to {L_new:.4f} (Step size: {L_new - L_current:.4e})")
         
-        # 4. Step forward
         L_current = L_new
         L_history.append(L_current)
         
     logger.info("Optimization Loop Complete.")
     
     # ---------------- Plotting ----------------
-    if dist.comm.rank == 0:  # Only the root process should handle plotting
+    if dist.comm.rank == 0: 
         logger.info("Generating optimization history plot...")
         
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5))
 
-        # We must divide by the actual integrated time rather than the full stop_sim_time
-        integrated_time_duration = stop_sim_time - start_averaging_time
-        
-        # Remove the dummy 0.0 at the start of J_history
-        real_J_history = J_history[1:]
-        time_averaged_Nu_history = [j / integrated_time_duration for j in real_J_history]
-        
-        # L_history has one extra element at the end (the final updated L that hasn't been evaluated yet)
+        # J_history is already properly time-averaged inside the function
+        time_averaged_Nu_history = J_history[1:]
         evaluated_L_history = L_history[:-1]
         
-        # Plot L history (evaluated ones)
         ax1.plot(range(len(evaluated_L_history)), evaluated_L_history, marker='o', color='b', linewidth=2)
         ax1.set_title('Domain Width (L) over Iterations')
         ax1.set_xlabel('Iteration Number')
         ax1.set_ylabel('L')
         ax1.grid(True, linestyle='--', alpha=0.7)
         
-        # Plot J history (real evaluated J's, starting at iteration 0)
         ax2.plot(range(len(time_averaged_Nu_history)), time_averaged_Nu_history, marker='s', color='r', linewidth=2)
         ax2.set_title('Objective Function (J) over Iterations')
         ax2.set_xlabel('Iteration Number')
         ax2.set_ylabel('Nusselt Number (J)')
         ax2.grid(True, linestyle='--', alpha=0.7)
 
-        # Plot J against L to visualize the relationship
         ax3.plot(evaluated_L_history, time_averaged_Nu_history, marker='^', color='g', linewidth=2)
         ax3.set_title('Objective Function (J) vs Domain Width (L)')
         ax3.set_xlabel('L')
