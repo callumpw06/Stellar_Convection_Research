@@ -12,11 +12,12 @@ logger = logging.getLogger(__name__)
 # ---------------- Global Parameters ----------------
 Nx, Nz = 128, 32
 Lz = 1
-Rayleigh = 2e6
+Rayleigh = 2e4
 Prandtl = 1
 nu = (Rayleigh / Prandtl)**(-1/2)
-stop_sim_time = 1e-1
-max_timestep = 1e-5
+stop_sim_time = 1
+start_averaging_time = 5e-1  
+max_timestep = 1e-4
 dtype = np.float64
 timestepper = d3.RK222
 
@@ -75,11 +76,11 @@ def evaluate_objective_and_gradient(params):
     
     # Standard conductive profile initial conditions
     # Generate reproducible local random noise for each MPI rank
-    local_shape = x.shape
-    local_noise = np.random.RandomState(seed=42 + dist.comm.rank).uniform(-0.01, 0.01, size=local_shape)
+    #local_shape = x.shape
+    #local_noise = np.random.RandomState(seed=42 + dist.comm.rank).uniform(-0.01, 0.01, size=local_shape)
     
     # Apply noise in x, but restrict to boundaries in z
-    perturbation = local_noise * np.sin(np.pi * z)
+    perturbation = 0.01 * np.cos(2 * np.pi * x / L_val) * np.sin(np.pi * z)
     
     T['g'] = 1 - z + perturbation
     u['g'] = 0
@@ -131,11 +132,12 @@ def evaluate_objective_and_gradient(params):
         saved_dts.append(timestep)
         
         # Accumulate the time-averaged objective function safely
-        local_J_array = J_integrand.evaluate()['g']
-        # .flatten() safely extracts the scalar value regardless of array shape
-        local_J = local_J_array.flatten()[0] if local_J_array.size > 0 else 0.0
-        
-        J_val += local_J * timestep
+        if solver.sim_time > start_averaging_time:
+            local_J_array = J_integrand.evaluate()['g']
+            # .flatten() safely extracts the scalar value regardless of array shape
+            local_J = local_J_array.flatten()[0] if local_J_array.size > 0 else 0.0
+            
+            J_val += local_J * timestep
 
     if np.isnan(J_val) or np.isinf(J_val):
         logger.warning(f"Forward simulation diverged to NaN for L={L_val:.4f}. Rejecting step.")
@@ -242,7 +244,7 @@ if __name__ == "__main__":
     for i in range(max_iterations):
         logger.info(f"========== Iteration {i+1}/{max_iterations} ==========")
 
-        alpha = 0.01          # Learning rate (You may need to tune this higher or lower)
+        alpha = 0.1          # Learning rate (You may need to tune this higher or lower)
         
         # 1. Evaluate the system
         J_val, grad_array = evaluate_objective_and_gradient([L_current])

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 # ---------------- Global Parameters ----------------
 Nx, Nz = 128, 32
 Lz = 1
-Rayleigh = 2e6
+Rayleigh = 2e4
 Prandtl = 1
 
 stop_sim_time = 1e-1
@@ -74,9 +74,9 @@ def forward_problem(params):
     solver.stop_sim_time = stop_sim_time
     
     # Standard conductive profile initial conditions
-    local_shape = x.shape
-    local_noise = np.random.RandomState(seed=42 + dist.comm.rank).uniform(-0.01, 0.01, size=local_shape)
-    perturbation = local_noise * np.sin(np.pi * z)
+    #local_shape = x.shape
+    #local_noise = np.random.RandomState(seed=42 + dist.comm.rank).uniform(-0.01, 0.01, size=local_shape)
+    perturbation = 0.01 * np.cos(2 * np.pi * x / L_val) * np.sin(np.pi * z)
     
     T['g'] = 1 - z + perturbation
     u['g'] = 0
