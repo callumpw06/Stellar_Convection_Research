@@ -10,11 +10,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ---------------- Global Parameters ----------------
-Nx, Nz = 128, 32
+Nx, Nz = 256, 64
 Lz = 1
-Rayleigh = 2e4
+Rayleigh = 1e5
 Prandtl = 1
-nu = (Rayleigh / Prandtl)**(-1/2)
+
 stop_sim_time = 1.0
 burn_in_time = 0.8  # Time given for the fluid to reach steady-state before optimizing
 max_timestep = 1e-4
@@ -201,7 +201,7 @@ def tracking_callback(xk):
 if __name__ == "__main__":
     # ---------------- Custom Gradient Ascent Setup ----------------
     L_current = 2.0        
-    max_iterations = 5    
+    max_iterations = 1    
     
     L_history = [L_current]
     J_history = [0.0]  

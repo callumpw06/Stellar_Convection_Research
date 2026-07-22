@@ -1,6 +1,5 @@
 import numpy as np
 import dedalus.public as d3
-from scipy.optimize import minimize
 import logging
 import matplotlib.pyplot as plt
 from mpi4py import MPI
@@ -12,7 +11,6 @@ logger = logging.getLogger(__name__)
 # ---------------- Global Parameters ----------------
 Nx, Nz = 256, 64
 Lz = 1
-Rayleigh = 2e4
 Prandtl = 1
 
 stop_sim_time = 1e-1
@@ -25,15 +23,12 @@ coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
 ex, ez = coords.unit_vector_fields(dist)
 
-def forward_problem(params):
-    # Isolate L as the only optimization parameter
-    L_val = params[0]
-    
+def forward_problem(L_val, Rayleigh):
     if np.isnan(L_val) or np.isinf(L_val) or L_val <= 0:
         logger.warning(f"Optimizer attempted invalid L_val: {L_val}. Rejecting step.")
-        return 1e9, np.zeros_like(params)
+        return 1e9
 
-    logger.info(f"--- Starting Forward Pass for L = {L_val:.4f} ---")
+    logger.info(f"--- Starting Forward Pass for L = {L_val:.4f}, Ra = {Rayleigh:.1e} ---")
 
     # ---------------- Setup Native Fields & Bases ----------------
     xbasis = d3.RealFourier(coords['x'], size=Nx, bounds=(0, L_val), dealias=3/2)
@@ -74,8 +69,6 @@ def forward_problem(params):
     solver.stop_sim_time = stop_sim_time
     
     # Standard conductive profile initial conditions
-    #local_shape = x.shape
-    #local_noise = np.random.RandomState(seed=42 + dist.comm.rank).uniform(-0.01, 0.01, size=local_shape)
     perturbation = 0.01 * np.cos(2 * np.pi * x / L_val) * np.sin(np.pi * z)
     
     T['g'] = 1 - z + perturbation
@@ -98,7 +91,7 @@ def forward_problem(params):
         # Fail fast if the simulation blows up
         if np.isnan(u['c']).any():
             logger.warning(f"Forward simulation blew up at t={solver.sim_time:.4f} for L={L_val:.4f}. Rejecting step.")
-            return 1e9
+            return 1.0 # Return conductive baseline on failure
         
         # Accumulate the time-averaged objective function safely ONLY after settling
         if solver.sim_time > start_averaging_time:
@@ -110,63 +103,80 @@ def forward_problem(params):
 
     if np.isnan(J_val) or np.isinf(J_val):
         logger.warning(f"Forward simulation diverged to NaN for L={L_val:.4f}. Rejecting step.")
-        return 1e9
+        return 1.0
 
     # Safely compute the actual time average
-    time_averaged_J = J_val / integrated_time if integrated_time > 0 else 0.0
+    time_averaged_J = J_val / integrated_time if integrated_time > 0 else 1.0
 
     return time_averaged_J
 
+
 if __name__ == "__main__":
 
-    # Use at least 15 points so the 4th-degree polynomial has enough data to find a trend
-    L_range = np.linspace(0.5, 3.0, 15)
+    # Define the Rayleigh numbers to sweep through
+    Rayleigh_list = [2e4, 1e5, 2e5, 3e5]
+    
+    # Domain widths to test
+    L_range = np.linspace(0.5, 3.0, 20)
 
-    J_values = []
-    for L_val in L_range:
-        J_val = forward_problem([L_val])
-        J_values.append(J_val)
-    
-    # --- Curve of Best Fit Calculation ---
-    coefficients = np.polyfit(L_range, J_values, 4)
-    polynomial = np.poly1d(coefficients)
-    
-    # Generate smooth L values 
-    L_smooth = np.linspace(min(L_range), max(L_range), 200)
-    J_smooth = polynomial(L_smooth)
-    
-    # Convert to wavenumber space (k = 2π/L)
-    k_range = 2 * np.pi / L_range
-    k_smooth = 2 * np.pi / L_smooth
-    
-    # Sort the wavenumber arrays to prevent Matplotlib from drawing the line backwards
-    sort_idx = np.argsort(k_smooth)
-    k_smooth_sorted = k_smooth[sort_idx]
-    J_smooth_sorted = J_smooth[sort_idx]
-    # -------------------------------------
+    # Matplotlib default color cycle to keep curves visually distinct
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
 
     # Setup the figure with 1 row and 2 columns
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-    
-    # --- Subplot 1: J vs Domain Width (L) ---
-    ax1.plot(L_range, J_values, marker='o', linestyle='', color='b', label='Simulated Data')
-    ax1.plot(L_smooth, J_smooth, linestyle='-', color='r', label='Curve of best fit (4th degree)')
+
+    for idx, Ra in enumerate(Rayleigh_list):
+        logger.info(f"========== Starting L-sweep for Rayleigh = {Ra:.1e} ==========")
+        
+        J_values = []
+        for L_val in L_range:
+            J_val = forward_problem(L_val, Ra)
+            J_values.append(J_val)
+        
+        # --- Curve of Best Fit Calculation ---
+        coefficients = np.polyfit(L_range, J_values, 10)
+        polynomial = np.poly1d(coefficients)
+        
+        # Generate smooth L values
+        L_smooth = np.linspace(min(L_range), max(L_range), 200)
+        J_smooth = polynomial(L_smooth)
+        
+        # Convert to wavenumber space (k = 2π/L)
+        k_range = 2 * np.pi / L_range
+        k_smooth = 2 * np.pi / L_smooth
+        
+        # Sort the wavenumber arrays to prevent Matplotlib from drawing the line backwards
+        sort_idx = np.argsort(k_smooth)
+        k_smooth_sorted = k_smooth[sort_idx]
+        J_smooth_sorted = J_smooth[sort_idx]
+        # -------------------------------------
+        
+        color = colors[idx % len(colors)]
+        label_str = f"Ra = {Ra:.1e}"
+
+        # --- Subplot 1: J vs Domain Width (L) ---
+        ax1.plot(L_range, J_values, marker='o', linestyle='', color=color, alpha=0.5)
+        ax1.plot(L_smooth, J_smooth, linestyle='-', color=color, label=label_str)
+        
+        # --- Subplot 2: J vs Wavenumber (k) ---
+        ax2.plot(k_range, J_values, marker='o', linestyle='', color=color, alpha=0.5)
+        ax2.plot(k_smooth_sorted, J_smooth_sorted, linestyle='-', color=color, label=label_str)
+
+    # Format Subplot 1
     ax1.set_title('Objective Function (J) vs Domain Width (L)')
     ax1.set_xlabel('Domain Width (L)')
     ax1.set_ylabel('Time-Averaged Nusselt Number (J)')
     ax1.legend()
     ax1.grid(True)
     
-    # --- Subplot 2: J vs Wavenumber (k) ---
-    ax2.plot(k_range, J_values, marker='o', linestyle='', color='b', label='Simulated Data')
-    ax2.plot(k_smooth_sorted, J_smooth_sorted, linestyle='-', color='r', label='Curve of best fit (4th degree)')
+    # Format Subplot 2
     ax2.set_title('Objective Function (J) vs Wavenumber (k = 2π/L)')
     ax2.set_xlabel('Wavenumber (k = 2π/L)')
     ax2.set_ylabel('Time-Averaged Nusselt Number (J)')
     ax2.legend()
     ax2.grid(True)
     
-    # Adjust layout to prevent overlapping text and save
+    # Adjust layout and save
     plt.tight_layout()
-    plt.savefig('objective_function_subplots.png', dpi=300, bbox_inches='tight')
+    plt.savefig('objective_function_subplots_multi_Ra.png', dpi=300, bbox_inches='tight')
     plt.show()
