@@ -3,6 +3,7 @@ import dedalus.public as d3
 import logging
 import matplotlib.pyplot as plt
 from mpi4py import MPI
+import sys
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 # ---------------- Global Parameters ----------------
 Nx, Nz = 128, 64
-L_val = 2.0  
+L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 Rayleigh = 1e5
 Prandtl = 1
 
@@ -136,3 +137,10 @@ if dist.comm.rank == 0:
     plt.close()
     
     logger.info(f"Plot saved successfully as '{plot_filename}'")
+
+    # ---------------- Save Steady State for Adjoint ----------------
+    np.savez('steady_state_solution.npz', 
+         u_coeffs=u['c'], T_coeffs=T['c'], p_coeffs=p['c'],
+         L_val=L_val, Rayleigh=Rayleigh, Prandtl=Prandtl,
+         Nx=Nx, Nz=Nz, J_val=J_val)
+    logger.info("Steady-state solution saved successfully to 'steady_state_solution.npz'")
