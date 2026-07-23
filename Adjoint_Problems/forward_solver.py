@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ---------------- Global Parameters ----------------
-Nx, Nz = 64, 32
+Nx, Nz = 128, 64
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 restart = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 Rayleigh = 1e5
@@ -212,33 +212,55 @@ if dist.comm.rank == 0:
     # 2. Draw Plot
     logger.info("Generating steady-state plot...")
     
-    X, Z = np.meshgrid(x_global[:,0], z_global[0,:], indexing='ij')
-    plt.figure(figsize=(10, 4))
-    plt.pcolormesh(X, Z, T_global, cmap='RdBu_r', shading='gouraud')
-    plt.colorbar(label='Temperature (T)')
+    # --- VISUAL BOUNDARY WRAP FIX ---
+    # Append the exact endpoint (L_val) to the x-grid and copy the x=0 data to the end
+    x_plot = np.append(x_global[:,0], L_val)
+    X, Z = np.meshgrid(x_plot, z_global[0,:], indexing='ij')
     
-    U_x = u_global[0]
-    U_z = u_global[1]
+    # Wrap Temperature
+    T_plot = np.vstack([T_global, T_global[0:1, :]])
     
-    magnitude = np.sqrt(U_x**2 + U_z**2)
+    # Wrap Velocity
+    U_x_plot = np.vstack([u_global[0], u_global[0][0:1, :]])
+    U_z_plot = np.vstack([u_global[1], u_global[1][0:1, :]])
+    # --------------------------------
+    
+    # Adjust figure size to fit an A4 page width nicely
+    plt.figure(figsize=(7.5, 3.5)) 
+    
+    # Plot using the wrapped arrays
+    mesh = plt.pcolormesh(X, Z, T_plot, cmap='RdBu_r', shading='gouraud')
+    
+    magnitude = np.sqrt(U_x_plot**2 + U_z_plot**2)
     safe_magnitude = np.where(magnitude == 0, 1.0, magnitude)
     
     log_magnitude = np.log1p(magnitude) 
-    U_x_log = U_x * (log_magnitude / safe_magnitude)
-    U_z_log = U_z * (log_magnitude / safe_magnitude)
+    U_x_log = U_x_plot * (log_magnitude / safe_magnitude)
+    U_z_log = U_z_plot * (log_magnitude / safe_magnitude)
     
     stride_x, stride_z = 4, 2 
     plt.quiver(X[::stride_x, ::stride_z].T, Z[::stride_x, ::stride_z].T, 
                U_x_log[::stride_x, ::stride_z].T, U_z_log[::stride_x, ::stride_z].T, 
                color='k', alpha=0.7, scale=100) 
     
-    plt.title(f'Time-Averaged Convection (Log-scaled Arrows, L={L_val:.2f})')
+    plt.title(f'Steady-State - Time-Averaged Convection (Log-scaled Arrows, L={L_val:.2f})')
     plt.xlabel('x')
     plt.ylabel('z')
+    
+    # Lock axes strictly to the domain limits
+    plt.xlim(0, L_val)
+    plt.ylim(0, 1)
+    
+    # Place the colorbar along the bottom, thinned out and padded
+    plt.colorbar(mesh, label='Temperature (T)', orientation='horizontal', 
+                 pad=0.22, aspect=40, fraction=0.08)
+    
     plt.tight_layout()
     
     plot_filename = os.path.join(BASE_DIR, 'steady_state_boussinesq.png')
-    plt.savefig(plot_filename, dpi=300)
+    
+    # bbox_inches='tight' crops all excess whitespace from the final image
+    plt.savefig(plot_filename, dpi=300, bbox_inches='tight')
     plt.close()
     
     logger.info(f"Plot saved successfully as '{plot_filename}'")

@@ -19,7 +19,7 @@ BEST_DATA_FILE = os.path.join(BASE_DIR, 'best_state.npz')
 
 # ---------------- Optimization Hyperparameters ----------------
 L_current = 2.0         # Starting domain width
-max_iterations = 15     # Increased slightly to allow for smaller backtracking steps
+max_iterations = 25     # Increased slightly to allow for smaller backtracking steps
 alpha = 0.1             # Learning rate (step size)
 
 L_history = [L_current]
@@ -37,7 +37,7 @@ if os.path.exists(DATA_FILE):
 logger.info("========== Starting Adjoint Shape Optimization Loop (Backtracking Mode) ==========")
 
 for i in range(max_iterations):
-    logger.info(f"\n--- Iteration {i+1}/{max_iterations} | Current L: {L_current:.4f} ---")
+    logger.info(f"\n--- Iteration {i+1}/{max_iterations} | Current L: {L_current:.6f} ---")
     
     restart_flag = "0" if i == 0 else "1"
     
@@ -55,7 +55,7 @@ for i in range(max_iterations):
     
     # --- BACKTRACKING LOGIC ---
     if J_current < J_best:
-        logger.warning(f"Objective dropped to {J_current:.4f}! We fell off the cliff.")
+        logger.warning(f"Objective dropped to {J_current:.6f}! We fell off the cliff.")
         logger.info("Rejecting step, restoring previous fluid state, and halving the learning rate...")
         
         # Shrink the step size
@@ -79,7 +79,7 @@ for i in range(max_iterations):
     shutil.copy(DATA_FILE, BEST_DATA_FILE) # Backup the good fluid state
     
     J_history.append(J_current)
-    logger.info(f"Forward pass complete. New Best Objective (J) = {J_current:.4f}")
+    logger.info(f"Forward pass complete. New Best Objective (J) = {J_current:.6f}")
 
     # 2. Run the Adjoint Problem
     logger.info("Executing Adjoint Solver...")
@@ -99,7 +99,7 @@ for i in range(max_iterations):
     safe_step = np.clip(raw_step, -0.15, 0.15)
     L_new = np.clip(L_current + safe_step, 0.5, 10.0)
 
-    logger.info(f"Update: L shifted from {L_current:.4f} to {L_new:.4f} (Step: {safe_step:.4e})")
+    logger.info(f"Update: L shifted from {L_current:.6f} to {L_new:.6f} (Step: {safe_step:.6e})")
     
     L_current = L_new
     L_history.append(L_current)
