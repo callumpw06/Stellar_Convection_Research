@@ -25,15 +25,15 @@ logger = logging.getLogger(__name__)
 
 
 # Parameters
-Lx, Lz = 4, 1
-Nx, Nz = 256, 64
+Lx, Lz = 1, 1
+Nx, Nz = 128, 64
 Rayleigh = 3e5
 Prandtl = 1
 Q = 0
 dealias = 3/2
 stop_sim_time = 5.0  # Time allowed for the fluid to settle into steady state
 timestepper = d3.RK222
-max_timestep = 1e-5
+max_timestep = 1e-3
 dtype = np.float64
 
 # Bases

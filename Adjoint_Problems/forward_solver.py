@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ---------------- Global Parameters ----------------
-Nx, Nz = 128, 64
+Nx, Nz = 96, 48
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 restart = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 Rayleigh = 1e5

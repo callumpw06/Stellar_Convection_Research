@@ -83,3 +83,8 @@ Below, there is weekly progress reports, including; completed tasks, background 
 22/07/26
 - Taking a step back and focusing on the steady-state solutions by running the time-dependent simulations for long time periods and calculating the final Nusselt number
 - Will then take this final steady state, and use it to solve the adjoint problem.
+
+24/07/26
+- Created code to plot J against L for lengths
+- Figured out there is a critical L for convection to take place. 
+- Trying to plot graph for larger Rayleigh numbers.
