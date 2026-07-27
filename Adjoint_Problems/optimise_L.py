@@ -20,7 +20,7 @@ BEST_DATA_FILE = os.path.join(BASE_DIR, 'best_state.npz')
 # ---------------- Optimization Hyperparameters ----------------
 L_current = 2.0         # Starting domain width
 max_iterations = 25     # Increased slightly to allow for smaller backtracking steps
-alpha = 0.1             # Learning rate (step size)
+alpha = 1             # Learning rate (step size)
 
 L_history = [L_current]
 J_history = []

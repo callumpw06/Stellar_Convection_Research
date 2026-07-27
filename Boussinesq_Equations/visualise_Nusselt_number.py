@@ -20,7 +20,7 @@ kappa = (Rayleigh * Prandtl)**(-1/2)
 data_folder = 'analysis'
 
 # Dimensions
-extent = [0, 4, 0, 1]
+extent = [0, 1.4, 0, 1]
 
 print(f"Searching for data in '/{data_folder}'...")
 

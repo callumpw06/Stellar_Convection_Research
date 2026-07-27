@@ -17,10 +17,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ---------------- Global Parameters ----------------
-Nx, Nz = 96, 48
+Nx, Nz = 128, 64
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 restart = int(sys.argv[2]) if len(sys.argv) > 2 else 0
-Rayleigh = 1e5
+Rayleigh = 2e4
 Prandtl = 1
 
 stop_sim_time = 5.0  # Time allowed for the fluid to settle into steady state
@@ -132,6 +132,9 @@ if restart == 0:
     u['g'][0] = 2 * amp * np.pi * np.sin(k_x * x) * np.sin(np.pi * z) * np.cos(np.pi * z)
     u['g'][1] = -amp * k_x * np.cos(k_x * x) * (np.sin(np.pi * z)**2)
     T['g'] += 0.2 * np.cos(k_x * x) * np.sin(np.pi * z)
+
+analysis = solver.evaluator.add_file_handler('analysis', sim_dt=stop_sim_time/60, max_writes=50)
+analysis.add_task(1 + d3.integ(u@ez * T)/(L_val), name='Nu')
 
 # ---------------- CFL & Time-Stepping Loop ----------------
 CFL = d3.CFL(solver, initial_dt=1e-6, cadence=10, safety=0.5, threshold=0.05,

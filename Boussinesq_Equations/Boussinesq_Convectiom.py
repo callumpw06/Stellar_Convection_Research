@@ -25,13 +25,13 @@ logger = logging.getLogger(__name__)
 
 
 # Parameters
-Lx, Lz = 1, 1
+Lx, Lz = 1.4, 1
 Nx, Nz = 128, 64
-Rayleigh = 3e5
+Rayleigh = 1e5
 Prandtl = 1
 Q = 0
 dealias = 3/2
-stop_sim_time = 5.0  # Time allowed for the fluid to settle into steady state
+stop_sim_time = 1.0  # Time allowed for the fluid to settle into steady state
 timestepper = d3.RK222
 max_timestep = 1e-3
 dtype = np.float64
@@ -85,8 +85,9 @@ T['g'] *= z * (Lz - z) # Damp noise at walls
 T['g'] += Lz - z # Add linear background
 
 # Analysis
-analysis = solver.evaluator.add_file_handler('analysis', sim_dt=10*max_timestep, max_writes=50)
+analysis = solver.evaluator.add_file_handler('analysis', sim_dt=max_timestep, max_writes=50)
 analysis.add_task(T, name='temperature')
+analysis.add_task(u@ez, name='w_velocity')
 analysis.add_task(-d3.div(d3.skew(u)), name='vorticity')
 analysis.add_task(np.sqrt(u@u), name='velocity_magnitude')
 analysis.add_task(1 + d3.integ(u@ez * T)/(Lx*Lz), name='Nu') # Nusselt number
