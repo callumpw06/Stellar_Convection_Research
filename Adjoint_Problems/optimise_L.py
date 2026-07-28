@@ -9,6 +9,19 @@ import shutil  # Added for backing up the fluid state
 # Set up logging for the wrapper
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
+plt.rcParams.update({
+    'font.size': 14,          # Base font size
+    'axes.titlesize': 22,     # Plot title size
+    'axes.labelsize': 22,     # X and Y label size
+    'xtick.labelsize': 18,    # X-axis tick numbers
+    'ytick.labelsize': 18,    # Y-axis tick numbers
+    'legend.fontsize': 18,    # Legend font size
+    "text.usetex": False,
+    "font.family": "serif",
+    "font.serif": ["cmr10"],                   # Matplotlib's built-in Computer Modern
+    "mathtext.fontset": "cm",                  # Use Computer Modern for math equations
+    "axes.formatter.use_mathtext": True,       # Use math text for axis tick labels
+})
 
 # ---------------- File Path Safety ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -19,7 +32,7 @@ BEST_DATA_FILE = os.path.join(BASE_DIR, 'best_state.npz')
 
 # ---------------- Optimization Hyperparameters ----------------
 L_current = 2.0         # Starting domain width
-max_iterations = 25     # Increased slightly to allow for smaller backtracking steps
+max_iterations = 15     # Increased slightly to allow for smaller backtracking steps
 alpha = 1             # Learning rate (step size)
 
 L_history = [L_current]

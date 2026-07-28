@@ -88,3 +88,15 @@ Below, there is weekly progress reports, including; completed tasks, background 
 - Created code to plot J against L for lengths
 - Figured out there is a critical L for convection to take place. 
 - Trying to plot graph for larger Rayleigh numbers.
+
+### Week 5
+
+27/07/26 
+- Continued work to plot J against L for different Rayleigh numbers - batched code to be executed on Hamilton.
+- Began to analyse each node of the solutions to the system.
+- Continued write-up fo report, including the application of the adjoint-based method.
+
+28/07/26
+- Plotted the convective heat flux created by each node of the solution to see how the activity of each node changes with domain width.
+- Revisted 'A model of magnetised and rotating convection for stellar and planetary interiors' by **L. Bessila** and **S. Mathis** to work towards introducing rotation and magentic fields into the problem - will look towards optimisation problems involving these.
+Continued write-up to include plots of optimisation progress, and imroved plot readability throughout the paper

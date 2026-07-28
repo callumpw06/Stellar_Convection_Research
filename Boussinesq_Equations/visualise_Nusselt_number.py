@@ -11,16 +11,26 @@ import matplotlib
 matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-# 1. Define your parameters (must match the simulation)
-Rayleigh = 2e6
-Prandtl = 1
-kappa = (Rayleigh * Prandtl)**(-1/2)
+
+plt.rcParams.update({
+    'font.size': 14,          # Base font size
+    'axes.titlesize': 14,     # Plot title size
+    'axes.labelsize': 14,     # X and Y label size
+    'xtick.labelsize': 12,    # X-axis tick numbers
+    'ytick.labelsize': 12,    # Y-axis tick numbers
+    'legend.fontsize': 14,    # Legend font size
+    "text.usetex": False,
+    "font.family": "serif",
+    "font.serif": ["cmr10"],                   # Matplotlib's built-in Computer Modern
+    "mathtext.fontset": "cm",                  # Use Computer Modern for math equations
+    "axes.formatter.use_mathtext": True,       # Use math text for axis tick labels
+})
 
 # Configuration
 data_folder = 'analysis'
 
 # Dimensions
-extent = [0, 1.4, 0, 1]
+extent = [0, 2, 0, 1]
 
 print(f"Searching for data in '/{data_folder}'...")
 

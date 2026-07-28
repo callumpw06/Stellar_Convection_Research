@@ -15,6 +15,19 @@ from mpi4py import MPI
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+plt.rcParams.update({
+    'font.size': 14,          # Base font size
+    'axes.titlesize': 14,     # Plot title size
+    'axes.labelsize': 14,     # X and Y label size
+    'xtick.labelsize': 12,    # X-axis tick numbers
+    'ytick.labelsize': 12,    # Y-axis tick numbers
+    'legend.fontsize': 14,    # Legend font size
+    "text.usetex": False,
+    "font.family": "serif",
+    "font.serif": ["cmr10"],                   # Matplotlib's built-in Computer Modern
+    "mathtext.fontset": "cm",                  # Use Computer Modern for math equations
+    "axes.formatter.use_mathtext": True,       # Use math text for axis tick labels
+})
 
 # ---------------- Global Parameters ----------------
 Nx, Nz = 128, 64
@@ -23,7 +36,7 @@ restart = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 Rayleigh = 2e4
 Prandtl = 1
 
-stop_sim_time = 5.0  # Time allowed for the fluid to settle into steady state
+stop_sim_time = 3.0  # Time allowed for the fluid to settle into steady state
 max_timestep = 1e-3
 dtype = np.float64
 timestepper = d3.RK222
@@ -133,9 +146,6 @@ if restart == 0:
     u['g'][1] = -amp * k_x * np.cos(k_x * x) * (np.sin(np.pi * z)**2)
     T['g'] += 0.2 * np.cos(k_x * x) * np.sin(np.pi * z)
 
-analysis = solver.evaluator.add_file_handler('analysis', sim_dt=stop_sim_time/60, max_writes=50)
-analysis.add_task(1 + d3.integ(u@ez * T)/(L_val), name='Nu')
-
 # ---------------- CFL & Time-Stepping Loop ----------------
 CFL = d3.CFL(solver, initial_dt=1e-6, cadence=10, safety=0.5, threshold=0.05,
              max_change=1.5, min_change=0.5, max_dt=max_timestep)
@@ -241,10 +251,10 @@ if dist.comm.rank == 0:
     U_x_log = U_x_plot * (log_magnitude / safe_magnitude)
     U_z_log = U_z_plot * (log_magnitude / safe_magnitude)
     
-    stride_x, stride_z = 4, 2 
+    stride_x, stride_z = 8, 4 
     plt.quiver(X[::stride_x, ::stride_z].T, Z[::stride_x, ::stride_z].T, 
                U_x_log[::stride_x, ::stride_z].T, U_z_log[::stride_x, ::stride_z].T, 
-               color='k', alpha=0.7, scale=100) 
+               color='k', alpha=0.5, scale=100) 
     
     plt.title(f'Steady-State - Time-Averaged Convection (Log-scaled Arrows, L={L_val:.2f})')
     plt.xlabel('x')
