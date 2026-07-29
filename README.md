@@ -100,3 +100,10 @@ Below, there is weekly progress reports, including; completed tasks, background 
 - Plotted the convective heat flux created by each node of the solution to see how the activity of each node changes with domain width.
 - Revisted 'A model of magnetised and rotating convection for stellar and planetary interiors' by **L. Bessila** and **S. Mathis** to work towards introducing rotation and magentic fields into the problem - will look towards optimisation problems involving these.
 Continued write-up to include plots of optimisation progress, and imroved plot readability throughout the paper
+
+29/07/26
+- Created heat flux spectra for static Rayleigh-Benard configuration.
+- Added rotation into the model to assess how it impacts the formation of convection cells - including diagrams and plots.
+- Continued write-up of findings, and finding out reasons for the observed behaviour.
+
+30/07/26

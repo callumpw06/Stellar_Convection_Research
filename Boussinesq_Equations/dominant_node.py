@@ -21,7 +21,7 @@ plt.rcParams.update({
 
 # Define the L values you want to plot. 
 # The script will look for folders named analysis_runs/Lx_{L}
-Lx_values = [1.4, 1.6, 2.0, 2.6, 3.2, 4.8]
+Lx_values = [1.550, 1.583, 2.000, 2.375, 3.166, 4.749]
 base_dir = Path('analysis_runs')
 
 for Lx in Lx_values:

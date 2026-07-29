@@ -1,6 +1,7 @@
 """
 This script will solve the Boussinesq equations for convection
-in a 2D domain using the finite difference method.
+in a 2D domain using the finite difference method, now including 
+rotational effects (Coriolis force) via a 2.5D formulation.
 
 This script can be run on MPI through the command:
     mpirun -np <number_of_processes> python Boussinesq_Convection.py <Lx>
@@ -31,15 +32,16 @@ Lz = 1
 Nx, Nz = 128, 64
 Rayleigh = 1e5
 Prandtl = 1
-Taylor = 1e5
+Taylor = 0  # Added Taylor number for rotational effects
 Q = 0
 dealias = 3/2
-stop_sim_time = 2.0  # Time allowed for the fluid to settle into steady state
+stop_sim_time = 1.0  # Time allowed for the fluid to settle into steady state
+recording_duration = 1.0  # Duration for which to record data at the end of the simulation
 timestepper = d3.RK222
 max_timestep = 1e-3
 dtype = np.float64
 
-logger.info(f"Running simulation with Lx = {Lx}, Nx = {Nx}, Nz = {Nz}")
+logger.info(f"Running simulation with Lx = {Lx}, Nx = {Nx}, Nz = {Nz}, Ta = {Taylor}")
 
 # Bases
 coords = d3.CartesianCoordinates('x', 'z')
@@ -50,8 +52,9 @@ zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
 # Fields
 p = dist.Field(name='p', bases=(xbasis,zbasis))
 T = dist.Field(name='T', bases=(xbasis,zbasis))
-u = dist.VectorField(coords, name='u', bases=(xbasis,zbasis))
-v = dist.Field(name='v', bases=(xbasis,zbasis))   
+u = dist.VectorField(coords, name='u', bases=(xbasis,zbasis)) # x and z velocities
+v = dist.Field(name='v', bases=(xbasis,zbasis))               # y-velocity (2.5D)
+
 tau_p = dist.Field(name='tau_p')
 tau_T1 = dist.Field(name='tau_T1', bases=xbasis)
 tau_T2 = dist.Field(name='tau_T2', bases=xbasis)
@@ -63,16 +66,16 @@ tau_v2 = dist.Field(name='tau_v2', bases=xbasis)
 # Substitutions
 kappa = (Rayleigh * Prandtl)**(-1/2)
 nu = (Rayleigh / Prandtl)**(-1/2)
-Coriolis_coeff = Prandtl * np.sqrt(Taylor)
+Coriolis_coeff = Prandtl * np.sqrt(Taylor) # Pre-calculate Pr * sqrt(Ta)
 
 x, z = dist.local_grids(xbasis, zbasis)
 ex, ez = coords.unit_vector_fields(dist)
 lift_basis = zbasis.derivative_basis(1)
 lift = lambda A: d3.Lift(A, lift_basis, -1)
+
 grad_u = d3.grad(u) + ez*lift(tau_u1) # First-order reduction
 grad_T = d3.grad(T) + ez*lift(tau_T1) # First-order reduction
 grad_v = d3.grad(v) + ez*lift(tau_v1) # First-order reduction for y-velocity
-
 
 # Problem Setup
 problem = d3.IVP([p, T, u, v, tau_p, tau_T1, tau_T2, tau_u1, tau_u2, tau_v1, tau_v2], namespace=locals())
@@ -104,6 +107,7 @@ solver.stop_sim_time = stop_sim_time
 T.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
 T['g'] *= z * (Lz - z) # Damp noise at walls
 T['g'] += Lz - z # Add linear background
+# Note: Initial 'v' and 'u' are naturally 0; 'v' will be driven by the Coriolis coupling.
 
 # CFL
 CFL = d3.CFL(solver, initial_dt=1e-7, cadence=10, safety=0.5, threshold=0.05,
@@ -111,9 +115,9 @@ CFL = d3.CFL(solver, initial_dt=1e-7, cadence=10, safety=0.5, threshold=0.05,
 CFL.add_velocity(u)
 
 # Flow properties
-# Flow properties
 flow = d3.GlobalFlowProperty(solver, cadence=10)
-flow.add_property(np.sqrt(u@u)/nu, name='Re')
+# Update Reynolds number calculation to include the y-velocity
+flow.add_property(np.sqrt(u@u + v**2)/nu, name='Re')
 
 # Main loop
 try:
@@ -121,7 +125,7 @@ try:
     
     # Calculate when to start recording (e.g., 5.0 - 0.5 = 4.5)
     analysis_setup = False
-    analysis_start_time = max(0.0, stop_sim_time - 0.5)
+    analysis_start_time = max(0.0, stop_sim_time - recording_duration)
     
     while solver.proceed:
         timestep = CFL.compute_timestep()
@@ -130,12 +134,17 @@ try:
         # Start recording data only during the last 0.5 time units
         if not analysis_setup and solver.sim_time >= analysis_start_time:
             logger.info(f"Starting analysis output at t = {solver.sim_time:e}")
-            out_dir = Path("analysis_runs") / f"Lx_{Lx}"
+            out_dir = Path("analysis")
             analysis = solver.evaluator.add_file_handler(out_dir, sim_dt=max_timestep, max_writes=50)
+            
             analysis.add_task(T, name='temperature')
             analysis.add_task(u@ez, name='w_velocity')
+            analysis.add_task(v, name='v_velocity') # Output new y-velocity
             analysis.add_task(-d3.div(d3.skew(u)), name='vorticity')
-            analysis.add_task(np.sqrt(u@u), name='velocity_magnitude')
+            
+            # Update velocity magnitude to include v
+            analysis.add_task(np.sqrt(u@u + v**2), name='velocity_magnitude') 
+            
             analysis.add_task(1 + d3.integ(u@ez * T)/(Lx*Lz), name='Nu') # Nusselt number
             analysis.add_task(p, name='pressure')
             analysis.add_task(-d3.integ(d3.grad(T)@ez, 'x')(z=Lz) / Lx, name='heat_flux_top')

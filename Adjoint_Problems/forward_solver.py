@@ -33,10 +33,12 @@ plt.rcParams.update({
 Nx, Nz = 128, 64
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 restart = int(sys.argv[2]) if len(sys.argv) > 2 else 0
-Rayleigh = 2e4
+Rayleigh = 1e5
 Prandtl = 1
+Taylor = 0 # Rotational affect
+Q = 0 # Internal heating term
 
-stop_sim_time = 3.0  # Time allowed for the fluid to settle into steady state
+stop_sim_time = 5.0  # Time allowed for the fluid to settle into steady state
 max_timestep = 1e-3
 dtype = np.float64
 timestepper = d3.RK222
@@ -57,31 +59,45 @@ x, z = dist.local_grids(xbasis, zbasis)
 p = dist.Field(name='p', bases=(xbasis, zbasis))
 T = dist.Field(name='T', bases=(xbasis, zbasis))
 u = dist.VectorField(coords, name='u', bases=(xbasis, zbasis))
+v = dist.Field(name='v', bases=(xbasis,zbasis)) 
 
 tau_p = dist.Field(name='tau_p')
 tau_T1 = dist.Field(name='tau_T1', bases=xbasis)
 tau_T2 = dist.Field(name='tau_T2', bases=xbasis)
 tau_u1 = dist.VectorField(coords, name='tau_u1', bases=xbasis)
 tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
+tau_v1 = dist.Field(name='tau_v1', bases=xbasis)              # tau for y-velocity
+tau_v2 = dist.Field(name='tau_v2', bases=xbasis)
+
+Coriolis_coeff = Prandtl * np.sqrt(Taylor)
 
 lift_basis = zbasis.derivative_basis(1)
 lift = lambda A: d3.Lift(A, lift_basis, -1)
 
 grad_u = d3.grad(u) + ez*lift(tau_u1)
 grad_T = d3.grad(T) + ez*lift(tau_T1)
+grad_v = d3.grad(v) + ez*lift(tau_v1) # First-order reduction for y-velocity
 
 # ---------------- IVP Problem Setup ----------------
 namespace = {**globals(), **locals()}
-problem = d3.IVP([p, T, u, tau_p, tau_T1, tau_T2, tau_u1, tau_u2], namespace=namespace)
+problem = d3.IVP([p, T, u, v, tau_p, tau_T1, tau_T2, tau_u1, tau_u2, tau_v1, tau_v2], namespace=locals())
 
+# Continuity and Heat Equations
 problem.add_equation("trace(grad_u) + tau_p = 0")
-problem.add_equation("dt(T) - div(grad_T) + lift(tau_T2) = -(u@grad(T))")
-problem.add_equation("dt(u) - Prandtl*div(grad_u) + grad(p) - Prandtl*Rayleigh*T*ez + lift(tau_u2) = -(u@grad(u))")
+problem.add_equation("dt(T) - div(grad_T) + lift(tau_T2) = - u@grad(T) + Q")
+
+# Modified u (x,z) momentum equation: Coriolis acts on x-component as -v
+problem.add_equation("dt(u) - Prandtl*div(grad_u) + grad(p) - Prandtl*Rayleigh*T*ez - Coriolis_coeff*v*ex + lift(tau_u2) = - u@grad(u)")
+
+# New v (y) momentum equation: Coriolis acts on y-component as +u_x
+problem.add_equation("dt(v) - Prandtl*div(grad_v) + Coriolis_coeff*(u@ex) + lift(tau_v2) = - u@grad(v)")
 
 problem.add_equation("T(z=0) = 1")
 problem.add_equation("T(z=1) = 0")
 problem.add_equation("u(z=0) = 0")
 problem.add_equation("u(z=1) = 0")
+problem.add_equation("v(z=0) = 0") # No-slip for y-velocity
+problem.add_equation("v(z=1) = 0") # No-slip for y-velocity
 problem.add_equation("integ(p) = 0")
 
 solver = problem.build_solver(timestepper)
