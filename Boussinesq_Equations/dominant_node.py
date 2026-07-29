@@ -75,6 +75,9 @@ for Lx in Lx_values:
     w_hat = np.fft.rfft(w, axis=1)
 
     flux_spectrum_2d = np.real(w_hat * np.conj(T_hat)) / (Nx**2)
+
+    flux_spectrum_2d[:, 1:] *= 2
+
     flux_per_mode_time = np.trapz(flux_spectrum_2d, x=z, axis=2)
 
     # Average over the ENTIRE loaded dataset, since the simulation 
