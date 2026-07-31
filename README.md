@@ -107,3 +107,9 @@ Continued write-up to include plots of optimisation progress, and imroved plot r
 - Continued write-up of findings, and finding out reasons for the observed behaviour.
 
 30/07/26
+- Create code to simulate these convection currents in polar coordinates.
+- Re-scaled heat flux spectrum plots to better show the relative contribution of each mode in heat transport.
+- Began to look into viscous dissipation and how this relates to the domain width.
+- Began looking into optimising the initial conditions of the system to maximise Nusselt number - this is much higher parameter problem, aiming to showcase the major advantages of the adjoint method.
+
+31/07/26

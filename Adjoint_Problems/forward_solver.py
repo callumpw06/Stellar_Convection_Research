@@ -30,10 +30,10 @@ plt.rcParams.update({
 })
 
 # ---------------- Global Parameters ----------------
-Nx, Nz = 128, 64
+Nx, Nz = 96, 48
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 restart = int(sys.argv[2]) if len(sys.argv) > 2 else 0
-Rayleigh = 1e5
+Rayleigh = 5e4
 Prandtl = 1
 Taylor = 0 # Rotational affect
 Q = 0 # Internal heating term
@@ -69,6 +69,8 @@ tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
 tau_v1 = dist.Field(name='tau_v1', bases=xbasis)              # tau for y-velocity
 tau_v2 = dist.Field(name='tau_v2', bases=xbasis)
 
+kappa = (Rayleigh * Prandtl)**(-1/2)
+nu = (Rayleigh / Prandtl)**(-1/2)
 Coriolis_coeff = Prandtl * np.sqrt(Taylor)
 
 lift_basis = zbasis.derivative_basis(1)
@@ -77,6 +79,20 @@ lift = lambda A: d3.Lift(A, lift_basis, -1)
 grad_u = d3.grad(u) + ez*lift(tau_u1)
 grad_T = d3.grad(T) + ez*lift(tau_T1)
 grad_v = d3.grad(v) + ez*lift(tau_v1) # First-order reduction for y-velocity
+
+# --- VISCOUS DISSIPATION FORMULATION ---
+# Calculate the full local viscous dissipation term
+# In Dedalus 3, tensor components are extracted using inner products (@) with unit vectors
+u_x = ex @ (grad_u @ ex)
+u_z = ez @ (grad_u @ ex)
+w_x = ex @ (grad_u @ ez)
+w_z = ez @ (grad_u @ ez)
+v_x = grad_v @ ex
+v_z = grad_v @ ez
+
+# Construct the local dissipation field (scalar)
+local_dissipation = nu * ( 2*(u_x*u_x) + 2*(w_z*w_z) + (u_z + w_x)**2 + (v_x*v_x) + (v_z*v_z) )
+# ---------------------------------------
 
 # ---------------- IVP Problem Setup ----------------
 namespace = {**globals(), **locals()}
@@ -173,6 +189,7 @@ sum_u_c = np.zeros_like(u['c'])
 sum_T_c = np.zeros_like(T['c'])
 sum_p_c = np.zeros_like(p['c'])
 sum_J = 0.0
+sum_dissipation = 0.0
 
 logger.info("Starting IVP time-integration to reach convective steady state...")
 
@@ -187,9 +204,16 @@ while solver.proceed:
         J_val_array = J_integrand.evaluate()['g']
         local_J = J_val_array.flatten()[0] if J_val_array.size > 0 else 0.0
         J_current = dist.comm.bcast(local_J, root=0)
+
+        # MPI-Safe extraction of Global Viscous Dissipation
+        dissip_integrand = d3.integ(local_dissipation) / L_val
+        dissip_val_array = dissip_integrand.evaluate()['g']
+        local_dissip = dissip_val_array.flatten()[0] if dissip_val_array.size > 0 else 0.0
+        dissip_current = dist.comm.bcast(local_dissip, root=0)
         
         # Accumulate sums
         sum_J += J_current
+        sum_dissipation += dissip_current
         sum_u_c += u['c']
         sum_T_c += T['c']
         sum_p_c += p['c']
@@ -201,6 +225,7 @@ while solver.proceed:
 # ---------------- Apply Time-Average ----------------
 if sample_count > 0:
     J_val = sum_J / sample_count
+    Dissip_val = sum_dissipation / sample_count
     u['c'] = sum_u_c / sample_count
     T['c'] = sum_T_c / sample_count
     p['c'] = sum_p_c / sample_count
@@ -212,6 +237,10 @@ else:
     local_J = J_val_array.flatten()[0] if J_val_array.size > 0 else 0.0
     J_val = dist.comm.bcast(local_J, root=0)
 
+    dissip_integrand = d3.integ(local_dissipation) / L_val
+    dissip_val_array = dissip_integrand.evaluate()['g']
+    local_dissip = dissip_val_array.flatten()[0] if dissip_val_array.size > 0 else 0.0
+    Dissip_val = dist.comm.bcast(local_dissip, root=0)
 
 # ---------------- Save Steady State for Adjoint & Continuation ----------------
 # Gather global data first so they can be written to the .npz file
@@ -235,7 +264,8 @@ if dist.comm.rank == 0:
              u_coeffs=u['c'], T_coeffs=T['c'], p_coeffs=p['c'],
              T_global=T_global, u_global=u_global, p_global=p_global,
              L_val=L_val, Rayleigh=Rayleigh, Prandtl=Prandtl,
-             Nx=Nx, Nz=Nz, J_val=J_val)
+             Nx=Nx, Nz=Nz, J_val=J_val,
+             Dissip_val=Dissip_val)
     logger.info(f"Steady-state solution saved successfully to {save_path}")
 
     # 2. Draw Plot

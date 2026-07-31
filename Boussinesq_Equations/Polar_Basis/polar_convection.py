@@ -29,9 +29,9 @@ L = Ro - Ri  # Gap width
 
 # Parameters
 Nphi, Nr = 128, 64
-Rayleigh = 1e5
+Rayleigh = 1e6
 Prandtl = 1
-Taylor = 0
+Taylor = 1e5
 Q = 0
 dealias = 3/2
 stop_sim_time = 1.0
@@ -136,7 +136,7 @@ T['g'] += (Ro - r_grid) / L
 
 # CFL (combine scalars back into a single vector expression for the cadence checker)
 ephi, er = coords.unit_vector_fields(dist)
-CFL = d3.CFL(solver, initial_dt=1e-7, cadence=10, safety=0.5, threshold=0.05, max_change=1.5, min_change=0.5, max_dt=max_timestep)
+CFL = d3.CFL(solver, initial_dt=1e-7, cadence=10, safety=0.2, threshold=0.05, max_change=1.2, min_change=0.1, max_dt=max_timestep)
 CFL.add_velocity(uphi*ephi + ur*er)
 
 # Flow properties

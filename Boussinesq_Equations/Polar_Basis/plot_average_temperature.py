@@ -15,6 +15,20 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 
+plt.rcParams.update({
+    'font.size': 14,          # Base font size
+    'axes.titlesize': 22,     # Plot title size
+    'axes.labelsize': 22,     # X and Y label size
+    'xtick.labelsize': 18,    # X-axis tick numbers
+    'ytick.labelsize': 18,    # Y-axis tick numbers
+    'legend.fontsize': 18,    # Legend font size
+    "text.usetex": False,
+    "font.family": "serif",
+    "font.serif": ["cmr10"],                   # Matplotlib's built-in Computer Modern
+    "mathtext.fontset": "cm",                  # Use Computer Modern for math equations
+    "axes.formatter.use_mathtext": True,       # Use math text for axis tick labels
+})
+
 # Configuration
 Ro_param = sys.argv[1] if len(sys.argv) > 1 else "1.0"
 data_folder = pathlib.Path(f'analysis_runs/Ro_{Ro_param}')

@@ -95,6 +95,7 @@ for Lx in Lx_values:
 
 # Finalize the plot formatting
 plt.xscale('log')
+plt.yscale('log')
 plt.xlabel('Fourier Mode Index ($n$)')
 plt.ylabel('Convective Heat Flux ($\\langle wT \\rangle$)')
 plt.title('Heat Transport Distribution Across Fourier Modes')

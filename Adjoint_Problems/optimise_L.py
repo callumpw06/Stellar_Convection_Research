@@ -37,6 +37,7 @@ alpha = 0.5             # Learning rate (step size)
 
 L_history = [L_current]
 J_history = []
+Dissip_history = []
 
 # Backtracking trackers
 J_best = -np.inf
@@ -65,6 +66,7 @@ for i in range(max_iterations):
         
     data = np.load(DATA_FILE)
     J_current = float(data['J_val'])
+    Dissip_current = float(data['Dissip_val'])
     
     # --- BACKTRACKING LOGIC ---
     if J_current < J_best:
@@ -92,7 +94,8 @@ for i in range(max_iterations):
     shutil.copy(DATA_FILE, BEST_DATA_FILE) # Backup the good fluid state
     
     J_history.append(J_current)
-    logger.info(f"Forward pass complete. New Best Objective (J) = {J_current:.6f}")
+    Dissip_history.append(Dissip_current)
+    logger.info(f"Forward pass complete. New Best Objective (J) = {J_current:.6f} | Dissipation = {Dissip_current:.6f}")
 
     # 2. Run the Adjoint Problem
     logger.info("Executing Adjoint Solver...")
@@ -122,7 +125,10 @@ logger.info("\n========== Optimization Loop Complete ==========")
 # ---------------- Plotting the Optimization History ----------------
 logger.info("Generating optimization history plots...")
 
-fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5))
+import matplotlib.ticker as ticker
+
+# Switch to 4 subplots to include J vs Dissipation
+fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(26, 6))
 
 # Since backtracking skips appending to history on bad steps, 
 # L_history will have more entries than J_history. We align them:
@@ -146,11 +152,52 @@ ax2.set_xlabel('Valid Iteration')
 ax2.set_ylabel('$J$')
 ax2.grid(True, linestyle='--', alpha=0.7)
 
-ax3.plot(valid_L_history, J_history, marker='^', color='g', linewidth=2)
-ax3.set_title('Objective vs Domain Width ($J$ vs $L$)')
+# --- Combined J and Dissipation vs L Plot ---
+color_J = 'g'
+color_D = 'purple'
+
+ax3.plot(valid_L_history, J_history, marker='^', color=color_J, linewidth=2)
+ax3.set_title('Objective & Dissipation vs Domain Width ($L$)')
 ax3.set_xlabel('$L$')
-ax3.set_ylabel('$J$')
+ax3.set_ylabel('Nusselt Number ($J$)', color=color_J)
+ax3.tick_params(axis='y', labelcolor=color_J)
+
+# Create twin axis sharing the same x-axis
+ax3_twin = ax3.twinx()
+ax3_twin.plot(valid_L_history, Dissip_history, marker='d', color=color_D, linewidth=2)
+ax3_twin.set_ylabel(r'Viscous Dissipation ($\langle \epsilon_u \rangle$)', color=color_D)
+ax3_twin.tick_params(axis='y', labelcolor=color_D)
+
+# Force identical tick counts to perfectly align the horizontal grid lines
+num_ticks = 6
+ax3.yaxis.set_major_locator(ticker.LinearLocator(num_ticks))
+ax3_twin.yaxis.set_major_locator(ticker.LinearLocator(num_ticks))
+
 ax3.grid(True, linestyle='--', alpha=0.7)
+ax3_twin.grid(False) # Turn off secondary grid so it strictly relies on the primary's aligned lines
+
+# --- NEW Plot: Dissipation vs Nusselt Number ---
+# This shows the trade-off trajectory between heat transport and fluid friction
+ax4.plot(J_history, Dissip_history, marker='o', color='darkorange', linewidth=2, label='Sim Data')
+
+# --- Add Theoretical Relation from Grossmann & Lohse ---
+# The exact relation: \epsilon_u \propto (Nu - 1)
+# Translated to the code's non-dimensional units: Dissipation = sqrt(Ra * Pr) * (Nu - 1)
+Ra_val = 5e4
+Pr_val = 1.0
+# Add a little buffer to the line so it covers the whole plot
+J_vals = np.linspace(min(J_history) - 0.1, max(J_history) + 0.1, 100)
+Dissip_theory = np.sqrt(Ra_val * Pr_val) * (J_vals - 1.0)
+
+ax4.plot(J_vals, Dissip_theory, color='k', linestyle='--', linewidth=2, label=r'Theory: $\epsilon_u \propto (Nu-1)$')
+ax4.legend(loc='best', fontsize=14)
+# -------------------------------------------------------
+
+ax4.set_title('Dissipation vs Nusselt Number')
+ax4.set_xlabel('Nusselt Number ($J$)')
+ax4.set_ylabel(r'Viscous Dissipation ($\langle \epsilon_u \rangle$)')
+ax4.grid(True, linestyle='--', alpha=0.7)
+# --------------------------------------------
 
 plt.tight_layout()
 plt.savefig(os.path.join(BASE_DIR, 'optimization_results.png'), dpi=300)
