@@ -106,10 +106,15 @@ Continued write-up to include plots of optimisation progress, and imroved plot r
 - Added rotation into the model to assess how it impacts the formation of convection cells - including diagrams and plots.
 - Continued write-up of findings, and finding out reasons for the observed behaviour.
 
-30/07/26
+30/07/26 + 31/07/26
 - Create code to simulate these convection currents in polar coordinates.
 - Re-scaled heat flux spectrum plots to better show the relative contribution of each mode in heat transport.
 - Began to look into viscous dissipation and how this relates to the domain width.
 - Began looking into optimising the initial conditions of the system to maximise Nusselt number - this is much higher parameter problem, aiming to showcase the major advantages of the adjoint method.
 
-31/07/26
+### Week 6
+
+03/08/26
+- Updated write-up to include plots of log-scaled heat flux spectra.
+- Fixed bugs in multiple_Ra_sweep.py code to plot the Nusselt number without diverging.
+- Batched 20 programs to run on Hamilton to give L* for different Rayleigh numbers so I can try to bound Nusselt number in terms of Rayleigh and Prandtl numbers.
