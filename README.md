@@ -118,3 +118,10 @@ Continued write-up to include plots of optimisation progress, and imroved plot r
 - Updated write-up to include plots of log-scaled heat flux spectra.
 - Fixed bugs in multiple_Ra_sweep.py code to plot the Nusselt number without diverging.
 - Batched 20 programs to run on Hamilton to give L* for different Rayleigh numbers so I can try to bound Nusselt number in terms of Rayleigh and Prandtl numbers.
+
+04/08/26
+- Attempted to fix bugs with code batched to Hamilton - resubmitted them. Waiting on them to be executed.
+- Created code to optimise initial conditions of the the system - aiming to focus on a different problem do hopefully backup intuitive thinking - or find an explanation against what we might intuitively think.
+- Continued write-up to include these sections.
+
+05/08/26

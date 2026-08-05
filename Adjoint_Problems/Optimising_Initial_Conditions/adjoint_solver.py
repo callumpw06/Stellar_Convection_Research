@@ -9,9 +9,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- Global Parameters ---
-Nx, Nz = 96, 48
+Nx, Nz = 128, 64
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
-Rayleigh = 5e4
+Rayleigh = 1e5
 Prandtl = 1.0
 dtype = np.float64
 timestepper = d3.RK222

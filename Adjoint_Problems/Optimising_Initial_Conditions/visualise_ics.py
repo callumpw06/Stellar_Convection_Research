@@ -26,7 +26,7 @@ plt.rcParams.update({
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Parameters matching your simulation
-Nx, Nz = 96, 48
+Nx, Nz = 128, 64
 L_val = 2.0
 
 # Reconstruct the physical grids for plotting
@@ -37,7 +37,7 @@ z = 0.5 - 0.5 * np.cos(np.pi * (2 * np.arange(Nz) + 1) / (2 * Nz))
 X, Z = np.meshgrid(x, z, indexing='ij')
 
 # Select which iterations to plot (e.g., First, a middle step, and the last)
-iterations_to_plot = [0, 2, 4, 5]
+iterations_to_plot = [0, 5, 10, 15]
 num_plots = len(iterations_to_plot)
 
 fig, axes = plt.subplots(2, num_plots, figsize=(4 * num_plots, 7), sharex=True, sharey=True)
