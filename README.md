@@ -124,4 +124,12 @@ Continued write-up to include plots of optimisation progress, and imroved plot r
 - Created code to optimise initial conditions of the the system - aiming to focus on a different problem do hopefully backup intuitive thinking - or find an explanation against what we might intuitively think.
 - Continued write-up to include these sections.
 
-05/08/26
+05/08/26 + 06/08/26
+- Changed the code to optimise initial conditions to create plots of the Nusselt number against time.
+- Continued to write-up this in my report.
+- Continued attempts to fix the code uplaoded to the supercomputer.
+
+07/08/26
+- Created code to optimise the initial conditions in the case of free-slip boundary conditions.
+- Adjusted timesteps and to stop the simulation from diverging.
+- Continued write-up of my findings, and improving plots.

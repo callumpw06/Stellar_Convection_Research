@@ -8,16 +8,27 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- Global Parameters ---
-Nx, Nz = 128, 64
+Nx, Nz = 96, 64
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
+BC_TYPE = sys.argv[2] if len(sys.argv) > 2 else 'free-slip'
 Rayleigh = 1e5
 Prandtl = 1.0
-stop_sim_time = 1.0
-averaging_window = 1.0  # Time window over which to average the objective function
+if BC_TYPE == 'no-slip':
+    stop_sim_time = 1.0
+    averaging_window = 1.0 
+    max_timestep = 1e-3
+    initial_dt = 1e-6
+elif BC_TYPE == 'free-slip':
+    stop_sim_time = 0.2
+    averaging_window = 0.2
+    max_timestep = 5e-5
+    initial_dt = 1e-8
+else:
+    raise ValueError(f"Unknown boundary condition: {BC_TYPE}")
+
 start_avg_time = stop_sim_time - averaging_window
-max_timestep = 1e-3
 dtype = np.float64
-timestepper = d3.RK222
+timestepper = d3.RK443
 
 coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
@@ -50,9 +61,21 @@ problem.add_equation("dt(T) - div(grad_T) + lift(tau_T2) = - u@grad(T)")
 problem.add_equation("dt(u) - Prandtl*div(grad_u) + grad(p) - Prandtl*Rayleigh*T*ez + lift(tau_u2) = - u@grad(u)")
 problem.add_equation("T(z=0) = 1")
 problem.add_equation("T(z=1) = 0")
-problem.add_equation("u(z=0) = 0")
-problem.add_equation("u(z=1) = 0")
 problem.add_equation("integ(p) = 0")
+
+# --- DYNAMIC BOUNDARY CONDITIONS ---
+if BC_TYPE == 'no-slip':
+    logger.info("Applying NO-SLIP boundaries to forward solver.")
+    problem.add_equation("u(z=0) = 0")
+    problem.add_equation("u(z=1) = 0")
+elif BC_TYPE == 'free-slip':
+    logger.info("Applying FREE-SLIP boundaries to forward solver.")
+    problem.add_equation("u(z=0)@ez = 0")
+    problem.add_equation("ex@(ez@grad_u)(z=0) = 0")
+    problem.add_equation("u(z=1)@ez = 0")
+    problem.add_equation("ex@(ez@grad_u)(z=1) = 0")
+else:
+    raise ValueError(f"Unknown boundary condition: {BC_TYPE}")
 
 solver = problem.build_solver(timestepper)
 solver.stop_sim_time = stop_sim_time
@@ -68,45 +91,47 @@ if os.path.exists(ic_file):
     T['g'] = ic_data['T_0']
 else:
     logger.info("Initializing baseline zero-velocity guess...")
-    # 1. Base conductive state
     T['g'] = 1 - z
-    
-    # 2. Set velocity completely to zero
     u['g'][0] = 0.0
     u['g'][1] = 0.0
     
-    # 3. Add a tiny temperature perturbation to break symmetry
-    # This gives the adjoint solver a microscopic thread to pull on
     k_x = 2 * np.pi / L_val 
     T['g'] += 0.01 * np.cos(k_x * x) * np.sin(np.pi * z)
     
-    # Save the baseline so the wrapper can update it later
     T.change_scales(1)
     u.change_scales(1)
     if dist.comm.rank == 0:
         np.savez(ic_file, u_0=u['g'], T_0=T['g'])
 
 # --- Save Snapshots for Adjoint ---
-# Triggering writes based on sim_dt prevents I/O throttling when CFL drops the timestep
-# --- Save Snapshots for Adjoint (Exact Checkpointing) ---
-# Saving every single iteration to ensure perfect time-symmetry in the adjoint pass
 snapshots = solver.evaluator.add_file_handler('snapshots', iter=1, max_writes=5000)
 snapshots.add_task(u, name='u_bar')
 snapshots.add_task(T, name='T_bar')
 
-# Time-stepping
-CFL = d3.CFL(solver, initial_dt=1e-6, cadence=10, safety=0.5, threshold=0.05,
-             max_change=1.5, min_change=0.5, max_dt=max_timestep)
+# --- Time-stepping ---
+CFL = d3.CFL(solver, initial_dt=initial_dt, cadence=10, safety=0.3, threshold=0.05,
+             max_change=1.1, min_change=0.5, max_dt=max_timestep)
 CFL.add_velocity(u)
 
 sum_J = 0.0; count = 0
+t_history = []  
+Nu_history = [] 
+
 while solver.proceed:
     timestep = CFL.compute_timestep()
     solver.step(timestep)
+
+    if solver.iteration % 100 == 0:
+        logger.info(f"Iter: {solver.iteration}, Time: {solver.sim_time:.4f}, dt: {timestep:.2e}")
+    
+    Nu_inst = d3.integ(1 + (u@ez) * T) / L_val
+    Nu_val = Nu_inst.evaluate()['g'].flatten()[0]
+    
+    t_history.append(solver.sim_time)
+    Nu_history.append(Nu_val)
     
     if solver.sim_time >= start_avg_time:
-        J_integrand = d3.integ(1 + (u@ez) * T) / L_val
-        sum_J += J_integrand.evaluate()['g'].flatten()[0]
+        sum_J += Nu_val
         count += 1
 
 if count > 0:
@@ -115,11 +140,9 @@ else:
     logger.warning("Missed the averaging window! Check your timestep/save frequency.")
     J_avg = 0.0
 
-# --- Calculate Final Kinetic Energy for the Optimizer Budget ---
-# We use np.sum(u['g']**2) to match the math we will use in the wrapper
 final_KE = np.sum(u['g']**2)
 
 if dist.comm.rank == 0:
-    np.savez('steady_state_solution.npz', J_val=J_avg, target_KE=final_KE)
+    np.savez('steady_state_solution.npz', J_val=J_avg, target_KE=final_KE, 
+             t_history=t_history, Nu_history=Nu_history)
     logger.info(f"Forward pass complete. Time-averaged Nu = {J_avg:.4f}")
-    logger.info(f"Final Kinetic Energy saved as budget: {final_KE:.4e}")
