@@ -81,6 +81,6 @@ def update(frame_idx):
 # Create the animation
 print("Creating animation...")
 ani = FuncAnimation(fig, update, frames=num_frames, blit=True)
-ani.save(output_movie, writer='ffmpeg', fps=180)
+ani.save(output_movie, writer='ffmpeg', fps=540)
 plt.close(fig)
 print(f"Animation saved as '{output_movie}'")
