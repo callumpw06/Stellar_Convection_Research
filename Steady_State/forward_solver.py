@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- Global Parameters ---
-Nx, Nz = 96, 48
+Nx, Nz = 512, 128
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 BC_TYPE = sys.argv[2] if len(sys.argv) > 2 else 'free-slip'
 Rayleigh = 1e5
@@ -19,10 +19,10 @@ if BC_TYPE == 'no-slip':
     max_timestep = 1e-3
     initial_dt = 1e-6
 elif BC_TYPE == 'free-slip':
-    stop_sim_time = 0.2
-    averaging_window = 0.2
-    max_timestep = 5e-5
-    initial_dt = 1e-8
+    stop_sim_time = 1.5
+    averaging_window = 0.5
+    max_timestep = 1e-4
+    initial_dt = 1e-6
 else:
     raise ValueError(f"Unknown boundary condition: {BC_TYPE}")
 
@@ -84,31 +84,23 @@ solver.stop_sim_time = stop_sim_time
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ic_file = os.path.join(BASE_DIR, 'current_initial_conditions.npz')
 
-if os.path.exists(ic_file):
-    logger.info("Loading optimized initial conditions...")
-    ic_data = np.load(ic_file)
-    u['g'] = ic_data['u_0']
-    T['g'] = ic_data['T_0']
-else:
-    logger.info("Initializing baseline zero-velocity guess...")
-    T.fill_random('g', seed=42, distribution='normal', scale=1e-3)
-    T['g'] += 1 - z
-    u['g'][0] = 0.0
-    u['g'][1] = 0.0
+logger.info("Initializing baseline zero-velocity guess...")
+T.fill_random('g', seed=42, distribution='normal', scale=1e-3)
+T['g'] += 1 - z
+u['g'][0] = 0.0
+u['g'][1] = 0.0
     
-    T.change_scales(1)
-    u.change_scales(1)
-    if dist.comm.rank == 0:
-        np.savez(ic_file, u_0=u['g'], T_0=T['g'])
+T.change_scales(1)
+u.change_scales(1)
 
 # --- Save Snapshots for Adjoint ---
-snapshots = solver.evaluator.add_file_handler('snapshots', iter=1, max_writes=5000)
+snapshots = solver.evaluator.add_file_handler('snapshots', iter=50, max_writes=500, mode='overwrite')
 snapshots.add_task(u, name='u_bar')
 snapshots.add_task(T, name='T_bar')
 
 # --- Time-stepping ---
 CFL = d3.CFL(solver, initial_dt=initial_dt, cadence=10, safety=0.3, threshold=0.05,
-             max_change=1.1, min_change=0.5, max_dt=max_timestep)
+             max_change=1.5, min_change=0.5, max_dt=max_timestep)
 CFL.add_velocity(u)
 
 sum_J = 0.0; count = 0

@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- Global Parameters ---
-Nx, Nz = 96, 64
+Nx, Nz = 96, 48
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 BC_TYPE = sys.argv[2] if len(sys.argv) > 2 else 'free-slip'
 Rayleigh = 1e5

@@ -20,7 +20,7 @@ alpha = 0.5  # Learning rate for the initial conditions
 L_val = 2.0  # Fixed domain width for this problem
 
 # SET BOUNDARY CONDITION HERE: 'free-slip' or 'no-slip'
-BOUNDARY_CONDITION = 'free-slip' 
+BOUNDARY_CONDITION = 'no-slip' 
 
 J_history = []
 

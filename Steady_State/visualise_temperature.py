@@ -57,7 +57,7 @@ num_frames, nx, nz = full_data.shape
 print(f"Data loaded. Frames: {num_frames}. Grid Size: {nx}x{nz}")
 
 print("Setting up animation...")
-fig, ax = plt.subplots(figsize=(10, 4))
+fig, ax = plt.subplots(figsize=(16, 2))
 
 initial_frame_data = full_data[0, :, :].T
 im = ax.imshow(initial_frame_data, origin='lower', extent=extent, cmap='RdBu_r', aspect='auto')

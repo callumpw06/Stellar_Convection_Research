@@ -33,12 +33,12 @@ plt.rcParams.update({
 Nx, Nz = 96, 48
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 restart = int(sys.argv[2]) if len(sys.argv) > 2 else 0
-Rayleigh = 5e4
+Rayleigh = 1e5
 Prandtl = 1
 Taylor = 0 # Rotational affect
 Q = 0 # Internal heating term
 
-stop_sim_time = 5.0  # Time allowed for the fluid to settle into steady state
+stop_sim_time = 1.0  # Time allowed for the fluid to settle into steady state
 max_timestep = 1e-3
 dtype = np.float64
 timestepper = d3.RK222
