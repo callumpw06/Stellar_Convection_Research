@@ -8,6 +8,20 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+# --- Plotting Configuration ---
+plt.rcParams.update({
+    'font.size': 12,
+    'axes.titlesize': 14,
+    'axes.labelsize': 12,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
+    "text.usetex": False,
+    "font.family": "serif",
+    "font.serif": ["cmr10"],
+    "mathtext.fontset": "cm",
+    "axes.formatter.use_mathtext": True,
+})
+
 # --- HPC Safe Logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -15,8 +29,8 @@ logger = logging.getLogger(__name__)
 # --- Problem Parameters ---
 Lx = 3.0        
 Lz = 1.0        
-Nx = 64         
-Nz = 64         
+Nx = 128         
+Nz = 96         
 Pr = 1.0        
 dealias = 3/2
 dtype = np.float64
@@ -89,13 +103,16 @@ solver = problem.build_solver(ncc_cutoff=1e-3)
 schedule = [
     (3000.0, 0.5),   # Phase 1: Force the rolls to form and lock their position
     (3000.0, 0.0),   # Phase 2: Remove the artificial forcing (snaps to true physics)
-    (10000.0, 0.0),  # Phase 3: Push Ra up...
-    (30000.0, 0.0),  # Phase 4: Intermediate step for safety
-    (50000.0, 0.0),
-    (100000.0, 0.0)  # Target state!
+    (5000.0, 0.0),   # Phase 3: Push Ra up...
+    (7500.0, 0.0),  
+    (10000.0, 0.0),
+    (20000.0, 0.0)#,  # Phase 4: ...and up to the desired Ra
+    #(30000.0, 0.0),
+    #(40000.0, 0.0),
+    #(50000.0, 0.0)
 ]
 
-tolerance = 1e-8
+tolerance = 1e-7
 max_steps = 20
 
 for target_Ra, target_eps in schedule:
@@ -123,6 +140,17 @@ for target_Ra, target_eps in schedule:
 
 logger.info("Convective steady state successfully solved!")
 
+# --- Nusselt Number Calculation ---
+Nu_integrand = d3.integ(1 + (v@ez) * T) / (Lx * Lz)
+Nu_val_array = Nu_integrand.evaluate()['g']
+local_Nu = Nu_val_array.flatten()[0] if Nu_val_array.size > 0 else 0.0
+global_Nu = dist.comm.bcast(local_Nu, root=0)
+
+if dist.comm.rank == 0:
+    logger.info("==================================================")
+    logger.info(f"Final Volume-Averaged Nusselt Number: {global_Nu:.4f}")
+    logger.info("==================================================")
+
 # --- Visualization (MPI Safe) ---
 T.change_scales(1)
 v.change_scales(1)
@@ -133,22 +161,64 @@ vz_data = v.allgather_data('g')[1]
 
 if dist.comm.rank == 0:
     logger.info("Generating visualization...")
+    import scipy.interpolate as interp
     
     x_global = xbasis.global_grid(dist, scale=1).flatten()
     z_global = zbasis.global_grid(dist, scale=1).flatten()
-    X, Z = np.meshgrid(x_global, z_global, indexing='ij')
+    
+    # --- PERIODIC WRAP FIX ---
+    # Append the exact endpoint (Lx) to the x-grid and copy the x=0 data to the end
+    x_plot = np.append(x_global, Lx)
+    T_plot = np.vstack([T_data, T_data[0:1, :]])
+    vx_plot = np.vstack([vx_data, vx_data[0:1, :]])
+    vz_plot = np.vstack([vz_data, vz_data[0:1, :]])
+    speed_plot = np.sqrt(vx_plot**2 + vz_plot**2)
+    # -------------------------
+    
+    X, Z = np.meshgrid(x_plot, z_global, indexing='ij')
 
-    plt.figure(figsize=(10, 5))
-    plt.pcolormesh(X, Z, T_data, shading='gouraud', cmap='RdBu_r')
-    plt.colorbar(label='Temperature (T)')
+    # Create a figure with 2 subplots vertically stacked
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+    
+    # --- Subplot 1: Temperature ---
+    mesh1 = ax1.pcolormesh(X, Z, T_plot, shading='gouraud', cmap='RdBu_r')
+    fig.colorbar(mesh1, ax=ax1, label='Temperature ($T$)')
+    ax1.set_xlim(0, Lx)
+    ax1.set_ylim(0, Lz)
+    ax1.set_ylabel('Height ($z$)')
+    ax1.set_title(f'Steady-State Temperature ($Ra = {target_Ra:.1e}, Pr = {Pr}$)')
 
-    speed = np.sqrt(vx_data**2 + vz_data**2)
-    plt.streamplot(x_global, z_global, 
-                   vx_data.T, vz_data.T, color='black', density=1.2, linewidth=1.5 * speed.T / speed.max())
+    # --- Subplot 2: Velocity Magnitude & Streamlines ---
+    # Plot the velocity magnitude as the background heatmap
+    mesh2 = ax2.pcolormesh(X, Z, speed_plot, shading='gouraud', cmap='viridis')
+    fig.colorbar(mesh2, ax=ax2, label='Speed ($|v|$)')
 
-    plt.xlabel('Position ($x$)')
-    plt.ylabel('Height ($z$)')
-    plt.title(f'NLBVP Steady-State Convection ($Ra = 10^5, Pr = {Pr}$)')
+    # Interpolate for Chebyshev Streamplot Fix
+    z_uniform = np.linspace(0, Lz, len(z_global))
+    sort_idx = np.argsort(z_global)
+    z_sorted = z_global[sort_idx]
+    
+    vx_sorted = vx_plot[:, sort_idx]
+    vz_sorted = vz_plot[:, sort_idx]
+    
+    f_vx = interp.interp1d(z_sorted, vx_sorted, axis=1, kind='cubic', fill_value='extrapolate')
+    f_vz = interp.interp1d(z_sorted, vz_sorted, axis=1, kind='cubic', fill_value='extrapolate')
+    
+    vx_uni = f_vx(z_uniform)
+    vz_uni = f_vz(z_uniform)
+    speed_uni = np.sqrt(vx_uni**2 + vz_uni**2)
+    
+    # Draw streamlines over the velocity magnitude (white lines contrast well against viridis)
+    ax2.streamplot(x_plot, z_uniform, 
+                   vx_uni.T, vz_uni.T, color='white', density=1.2, 
+                   linewidth=1.5 * speed_uni.T / speed_uni.max())
+
+    ax2.set_xlim(0, Lx)
+    ax2.set_ylim(0, Lz)
+    ax2.set_xlabel('Position ($x$)')
+    ax2.set_ylabel('Height ($z$)')
+    ax2.set_title('Velocity Field & Streamlines')
+
     plt.tight_layout()
 
     output_filename = 'steady_state_convection.png'

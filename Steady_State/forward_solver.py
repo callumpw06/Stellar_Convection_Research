@@ -8,19 +8,19 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- Global Parameters ---
-Nx, Nz = 512, 128
+Nx, Nz = 256, 64
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 BC_TYPE = sys.argv[2] if len(sys.argv) > 2 else 'free-slip'
-Rayleigh = 1e5
-Prandtl = 1.0
+Rayleigh = 3000
+Prandtl = 10
 if BC_TYPE == 'no-slip':
     stop_sim_time = 1.0
     averaging_window = 1.0 
     max_timestep = 1e-3
     initial_dt = 1e-6
 elif BC_TYPE == 'free-slip':
-    stop_sim_time = 1.5
-    averaging_window = 0.5
+    stop_sim_time = 1.0
+    averaging_window = 0.25
     max_timestep = 1e-4
     initial_dt = 1e-6
 else:
