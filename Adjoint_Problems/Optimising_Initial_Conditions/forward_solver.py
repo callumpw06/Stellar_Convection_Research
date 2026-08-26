@@ -19,10 +19,10 @@ if BC_TYPE == 'no-slip':
     max_timestep = 1e-3
     initial_dt = 1e-6
 elif BC_TYPE == 'free-slip':
-    stop_sim_time = 0.2
-    averaging_window = 0.2
-    max_timestep = 5e-5
-    initial_dt = 1e-8
+    stop_sim_time = 1.0
+    averaging_window = 1.0
+    max_timestep = 1e-4
+    initial_dt = 1e-6
 else:
     raise ValueError(f"Unknown boundary condition: {BC_TYPE}")
 

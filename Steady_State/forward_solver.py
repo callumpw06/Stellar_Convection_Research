@@ -3,16 +3,17 @@ import dedalus.public as d3
 import logging
 import os
 import sys
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- Global Parameters ---
-Nx, Nz = 256, 64
+Nx, Nz = 96, 48
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 BC_TYPE = sys.argv[2] if len(sys.argv) > 2 else 'free-slip'
-Rayleigh = 3000
-Prandtl = 10
+Rayleigh = float(sys.argv[3]) if len(sys.argv) > 3 else 1e5
+Prandtl = 1
 if BC_TYPE == 'no-slip':
     stop_sim_time = 1.0
     averaging_window = 1.0 
@@ -20,7 +21,7 @@ if BC_TYPE == 'no-slip':
     initial_dt = 1e-6
 elif BC_TYPE == 'free-slip':
     stop_sim_time = 1.0
-    averaging_window = 0.25
+    averaging_window = 0.10
     max_timestep = 1e-4
     initial_dt = 1e-6
 else:
@@ -94,7 +95,8 @@ T.change_scales(1)
 u.change_scales(1)
 
 # --- Save Snapshots for Adjoint ---
-snapshots = solver.evaluator.add_file_handler('snapshots', iter=50, max_writes=500, mode='overwrite')
+out_dir = Path("snapshots") / f"Lx_{L_val}"
+snapshots = solver.evaluator.add_file_handler(out_dir, sim_dt=max_timestep, max_writes=50)
 snapshots.add_task(u, name='u_bar')
 snapshots.add_task(T, name='T_bar')
 

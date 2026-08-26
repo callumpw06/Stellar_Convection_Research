@@ -5,53 +5,36 @@ import logging
 import os
 import sys
 
-# --- HPC PLOTTING FIX ---
 import matplotlib
-matplotlib.use('Agg')  # Force headless rendering to prevent MPI deadlocks
+matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
-
 from mpi4py import MPI
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-plt.rcParams.update({
-    'font.size': 14,          # Base font size
-    'axes.titlesize': 14,     # Plot title size
-    'axes.labelsize': 14,     # X and Y label size
-    'xtick.labelsize': 12,    # X-axis tick numbers
-    'ytick.labelsize': 12,    # Y-axis tick numbers
-    'legend.fontsize': 14,    # Legend font size
-    "text.usetex": False,
-    "font.family": "serif",
-    "font.serif": ["cmr10"],                   # Matplotlib's built-in Computer Modern
-    "mathtext.fontset": "cm",                  # Use Computer Modern for math equations
-    "axes.formatter.use_mathtext": True,       # Use math text for axis tick labels
-})
 
-# ---------------- Global Parameters ----------------
-Nx, Nz = 96, 48
+# ---------------- Global Parameters & Inputs ----------------
+Nx, Nz = 128, 64
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 restart = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+BC_TYPE = str(sys.argv[3]) if len(sys.argv) > 3 else "free-slip" # NEW: Boundary condition toggle
+
 Rayleigh = 1e5
 Prandtl = 1
-Taylor = 0 # Rotational affect
-Q = 0 # Internal heating term
+Taylor = 1e7 
+Q = 0 
 
-stop_sim_time = 1.0  # Time allowed for the fluid to settle into steady state
+stop_sim_time = 1.0  
 max_timestep = 1e-3
 dtype = np.float64
 timestepper = d3.RK222
-
-# --- Time-Averaging Parameters ---
-averaging_window = 0.5  # Average over the last 0.5 time units
+averaging_window = 0.5  
 start_avg_time = stop_sim_time - averaging_window
 
 coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
 ex, ez = coords.unit_vector_fields(dist)
 
-# ---------------- Setup Native Fields & Bases ----------------
 xbasis = d3.RealFourier(coords['x'], size=Nx, bounds=(0, L_val), dealias=3/2)
 zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, 1), dealias=3/2)
 x, z = dist.local_grids(xbasis, zbasis)
@@ -66,7 +49,7 @@ tau_T1 = dist.Field(name='tau_T1', bases=xbasis)
 tau_T2 = dist.Field(name='tau_T2', bases=xbasis)
 tau_u1 = dist.VectorField(coords, name='tau_u1', bases=xbasis)
 tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
-tau_v1 = dist.Field(name='tau_v1', bases=xbasis)              # tau for y-velocity
+tau_v1 = dist.Field(name='tau_v1', bases=xbasis)              
 tau_v2 = dist.Field(name='tau_v2', bases=xbasis)
 
 kappa = (Rayleigh * Prandtl)**(-1/2)
@@ -78,11 +61,8 @@ lift = lambda A: d3.Lift(A, lift_basis, -1)
 
 grad_u = d3.grad(u) + ez*lift(tau_u1)
 grad_T = d3.grad(T) + ez*lift(tau_T1)
-grad_v = d3.grad(v) + ez*lift(tau_v1) # First-order reduction for y-velocity
+grad_v = d3.grad(v) + ez*lift(tau_v1) 
 
-# --- VISCOUS DISSIPATION FORMULATION ---
-# Calculate the full local viscous dissipation term
-# In Dedalus 3, tensor components are extracted using inner products (@) with unit vectors
 u_x = ex @ (grad_u @ ex)
 u_z = ez @ (grad_u @ ex)
 w_x = ex @ (grad_u @ ez)
@@ -90,31 +70,39 @@ w_z = ez @ (grad_u @ ez)
 v_x = grad_v @ ex
 v_z = grad_v @ ez
 
-# Construct the local dissipation field (scalar)
 local_dissipation = nu * ( 2*(u_x*u_x) + 2*(w_z*w_z) + (u_z + w_x)**2 + (v_x*v_x) + (v_z*v_z) )
-# ---------------------------------------
 
-# ---------------- IVP Problem Setup ----------------
 namespace = {**globals(), **locals()}
 problem = d3.IVP([p, T, u, v, tau_p, tau_T1, tau_T2, tau_u1, tau_u2, tau_v1, tau_v2], namespace=locals())
 
-# Continuity and Heat Equations
 problem.add_equation("trace(grad_u) + tau_p = 0")
 problem.add_equation("dt(T) - div(grad_T) + lift(tau_T2) = - u@grad(T) + Q")
-
-# Modified u (x,z) momentum equation: Coriolis acts on x-component as -v
 problem.add_equation("dt(u) - Prandtl*div(grad_u) + grad(p) - Prandtl*Rayleigh*T*ez - Coriolis_coeff*v*ex + lift(tau_u2) = - u@grad(u)")
-
-# New v (y) momentum equation: Coriolis acts on y-component as +u_x
 problem.add_equation("dt(v) - Prandtl*div(grad_v) + Coriolis_coeff*(u@ex) + lift(tau_v2) = - u@grad(v)")
 
 problem.add_equation("T(z=0) = 1")
 problem.add_equation("T(z=1) = 0")
-problem.add_equation("u(z=0) = 0")
-problem.add_equation("u(z=1) = 0")
-problem.add_equation("v(z=0) = 0") # No-slip for y-velocity
-problem.add_equation("v(z=1) = 0") # No-slip for y-velocity
 problem.add_equation("integ(p) = 0")
+
+# --- DYNAMIC BOUNDARY CONDITIONS ---
+if BC_TYPE == "no-slip":
+    problem.add_equation("u(z=0) = 0")
+    problem.add_equation("u(z=1) = 0")
+    problem.add_equation("v(z=0) = 0") 
+    problem.add_equation("v(z=1) = 0") 
+elif BC_TYPE == "free-slip":
+    # Impermeability (w = 0)
+    problem.add_equation("u(z=0)@ez = 0")
+    problem.add_equation("u(z=1)@ez = 0")
+    # Zero shear stress for u (dz(u_x) = 0)
+    problem.add_equation("ez @ (grad_u(z=0) @ ex) = 0")
+    problem.add_equation("ez @ (grad_u(z=1) @ ex) = 0")
+    # Zero shear stress for v (dz(v) = 0)
+    problem.add_equation("ez @ grad_v(z=0) = 0")
+    problem.add_equation("ez @ grad_v(z=1) = 0")
+else:
+    raise ValueError(f"Unknown boundary condition specified: {BC_TYPE}")
+# -----------------------------------
 
 solver = problem.build_solver(timestepper)
 solver.stop_sim_time = stop_sim_time

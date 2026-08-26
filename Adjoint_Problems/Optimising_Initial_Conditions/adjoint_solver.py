@@ -20,8 +20,8 @@ if BC_TYPE == 'no-slip':
     stop_sim_time = 1.0
     averaging_window = 1.0 
 elif BC_TYPE == 'free-slip':
-    stop_sim_time = 0.2
-    averaging_window = 0.2
+    stop_sim_time = 1.0
+    averaging_window = 1.0
 else:
     raise ValueError(f"Unknown boundary condition: {BC_TYPE}")
 start_avg_time = stop_sim_time - averaging_window

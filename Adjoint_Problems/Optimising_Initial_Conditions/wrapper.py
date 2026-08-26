@@ -17,10 +17,10 @@ GRADIENT_FILE = os.path.join(BASE_DIR, 'gradient.npz')
 # --- Optimization Hyperparameters & Settings ---
 max_iterations = 15
 alpha = 0.5  # Learning rate for the initial conditions
-L_val = 2.0  # Fixed domain width for this problem
+L_val = 3.0  # Fixed domain width for this problem
 
 # SET BOUNDARY CONDITION HERE: 'free-slip' or 'no-slip'
-BOUNDARY_CONDITION = 'no-slip' 
+BOUNDARY_CONDITION = 'free-slip' 
 
 J_history = []
 
