@@ -13,7 +13,7 @@ Nx, Nz = 96, 48
 L_val = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
 BC_TYPE = sys.argv[2] if len(sys.argv) > 2 else 'free-slip'
 Rayleigh = float(sys.argv[3]) if len(sys.argv) > 3 else 1e5
-Prandtl = 1
+Prandtl = 10
 if BC_TYPE == 'no-slip':
     stop_sim_time = 1.0
     averaging_window = 1.0 
@@ -22,8 +22,8 @@ if BC_TYPE == 'no-slip':
 elif BC_TYPE == 'free-slip':
     stop_sim_time = 1.0
     averaging_window = 0.10
-    max_timestep = 1e-4
-    initial_dt = 1e-6
+    max_timestep = 1e-3
+    initial_dt = 1e-5
 else:
     raise ValueError(f"Unknown boundary condition: {BC_TYPE}")
 
@@ -54,6 +54,14 @@ lift_basis = zbasis.derivative_basis(1)
 lift = lambda A: d3.Lift(A, lift_basis, -1)
 grad_u = d3.grad(u) + ez*lift(tau_u1)
 grad_T = d3.grad(T) + ez*lift(tau_T1)
+
+# --- VISCOUS DISSIPATION TENSOR SETUP ---
+nu = (Rayleigh / Prandtl)**(-0.5)
+u_x = ex @ (grad_u @ ex)
+u_z = ez @ (grad_u @ ex)
+w_x = ex @ (grad_u @ ez)
+w_z = ez @ (grad_u @ ez)
+local_dissipation = nu * ( 2*(u_x*u_x) + 2*(w_z*w_z) + (u_z + w_x)**2 )
 
 # --- IVP Setup ---
 problem = d3.IVP([p, T, u, tau_p, tau_T1, tau_T2, tau_u1, tau_u2], namespace=locals())
@@ -105,10 +113,11 @@ CFL = d3.CFL(solver, initial_dt=initial_dt, cadence=10, safety=0.3, threshold=0.
              max_change=1.5, min_change=0.5, max_dt=max_timestep)
 CFL.add_velocity(u)
 
-sum_J = 0.0; count = 0
+sum_J = 0.0; sum_Dissip = 0.0; count = 0
 t_history = []  
 Nu_history = [] 
 KE_history = []  
+Dissip_history = []
 
 while solver.proceed:
     timestep = CFL.compute_timestep()
@@ -121,32 +130,42 @@ while solver.proceed:
     Nu_val = dist.comm.bcast(local_Nu, root=0)
 
     # --- SAFE EVALUATION FOR KINETIC ENERGY ---
-    KE_inst = d3.integ(0.5 * (u@u))
+    KE_inst = d3.integ(0.5 * (u@u)) / L_val
     KE_array = KE_inst.evaluate()['g']
     local_KE = KE_array.flatten()[0] if KE_array.size > 0 else 0.0
     KE_val = dist.comm.bcast(local_KE, root=0)
     
-    # --- UPDATED LOGGING: Now prints every 100 steps with KE included ---
+    # --- SAFE EVALUATION FOR VISCOUS DISSIPATION ---
+    Dissip_inst = d3.integ(local_dissipation) / L_val
+    Dissip_array = Dissip_inst.evaluate()['g']
+    local_Dissip = Dissip_array.flatten()[0] if Dissip_array.size > 0 else 0.0
+    Dissip_val = dist.comm.bcast(local_Dissip, root=0)
+    
+    # --- UPDATED LOGGING ---
     if solver.iteration % 100 == 0:
-        logger.info(f"Iter: {solver.iteration}, Time: {solver.sim_time:.4f}, dt: {timestep:.2e}, KE: {KE_val:.4e}")
+        logger.info(f"Iter: {solver.iteration}, Time: {solver.sim_time:.4f}, dt: {timestep:.2e}, KE: {KE_val:.4e}, Dissip: {Dissip_val:.4e}")
     
     t_history.append(solver.sim_time)
     Nu_history.append(Nu_val)
     KE_history.append(KE_val)
+    Dissip_history.append(Dissip_val)
 
     if solver.sim_time >= start_avg_time:
         sum_J += Nu_val
+        sum_Dissip += Dissip_val
         count += 1
 
 if count > 0:
     J_avg = sum_J / count
+    Dissip_avg = sum_Dissip / count
 else:
     logger.warning("Missed the averaging window! Check your timestep/save frequency.")
     J_avg = 0.0
+    Dissip_avg = 0.0
 
 final_KE = np.sum(u['g']**2)
 
 if dist.comm.rank == 0:
-    np.savez('steady_state_solution.npz', J_val=J_avg, target_KE=final_KE, 
-             t_history=t_history, KE_history=KE_history, Nu_history=Nu_history)
-    logger.info(f"Forward pass complete. Time-averaged Nu = {J_avg:.4f}")
+    np.savez('steady_state_solution.npz', J_val=J_avg, Dissip_avg=Dissip_avg, target_KE=final_KE, 
+             t_history=t_history, KE_history=KE_history, Nu_history=Nu_history, Dissip_history=Dissip_history)
+    logger.info(f"Forward pass complete. Time-averaged Nu = {J_avg:.4f} | Dissip = {Dissip_avg:.4e}")

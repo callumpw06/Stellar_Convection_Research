@@ -4,11 +4,11 @@ from scipy.optimize import curve_fit
 
 # --- Plotting Configuration ---
 plt.rcParams.update({
-    'font.size': 12,
-    'axes.titlesize': 14,
-    'axes.labelsize': 12,
-    'xtick.labelsize': 10,
-    'ytick.labelsize': 10,
+    'font.size': 18,
+    'axes.titlesize': 18,
+    'axes.labelsize': 16,
+    'xtick.labelsize': 14,
+    'ytick.labelsize': 14,
     "text.usetex": False,
     "font.family": "serif",
     "font.serif": ["cmr10"],
@@ -16,55 +16,25 @@ plt.rcParams.update({
     "axes.formatter.use_mathtext": True,
 })
 
-# --- 1. Custom Data Points ---
-custom_Ra = [657, 700, 800, 900,
-            1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900,
-            2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900,
-            3000, 3100, 3200, 3300, 3400, 3500, 3600, 3700, 3800, 3900, 
-            4000, 4100, 4200, 4300, 4400, 4500, 4600, 4700, 4800, 4900,
-            5000,
-            1e4, 2e4, 3e4, 4e4, 5e4, 6e4, 7e4, 8e4, 9e4,
-            1e5, 2e5, 3e5, 4e5, 5e5, 6e5, 7e5, 8e5, 9e5,
-            1e6]
-
-#Pr_0_5_Nu = [1.0000, 1.1139, 1.3599, 1.5609,
-            #1.7298, 1.8751, 2.0025, 2.1160, 2.2183, 2.3116, 2.3974, 2.4771, 2.5514, 2.6213,
-            #2.6873, 2.7498, 2.8094, 2.8663, 2.9209, 2.9734, 3.0329, 3.0727, 3.1200, 3.1658,
-            #3.2103, 3.2536, 3.2957, 3.3368, 3.3769, 3.4161, 3.4544, 3.4919, 3.5282, 3.5647,
-            #3.6001, 3.6348, 3.6689, 3.7025, 3.7354, 3.7679, 3.7998, 3.8313, 3.8622, 3.8928,
-            #3.9229]
+# --- 1. Custom Data Points [Ra, Nu] ---
 Pr_1_data = [
-    [657, 1.0000], [700, 1.1139], [800, 1.3599], [900, 1.5610], [1000, 1.7299], [1100, 1.8751], 
-    [1200, 2.0024], [1300, 2.1157], [1400, 2.2177], [1500, 2.3107], [1600, 2.3962], [1700, 2.4754], 
-    [1800, 2.5493], [1900, 2.6187], [2000, 2.6841], [2100, 2.7462], [2200, 2.8052], [2300, 2.8615], 
-    [2400, 2.9155], [2500, 2.9673], [2600, 3.0172], [2700, 3.0654], [2800, 3.1120], [2900, 3.1572], 
-    [3000, 3.2010], [3100, 3.2437], [3200, 3.2852], [3300, 3.3256], [3400, 3.3651], [3500, 3.4037], 
-    [3600, 3.4414], [3700, 3.4783], [3800, 3.5145], [3900, 3.5499], [4000, 3.5847], [4100, 3.6189], 
-    [4200, 3.6524], [4300, 3.68564], [4400, 3.7179], [4500, 3.7498], [4600, 3.7812], [4700, 3.8122], 
-    [4800, 3.8427], [4900, 3.8738], [5000, 3.9024], [1e4, 4.453873], [2e4, 6.557562], [3e4, 7.668585], 
+    [657, 1.0000], [700, 1.1139], [800, 1.3599], [900, 1.568502], [1000, 1.738682], [1100, 1.884388], 
+    [1200, 2.01218], [1300, 2.125991], [1400, 2.228654], [1500, 2.32225], [1600, 2.408351], [1700, 2.488205], 
+    [1800, 2.565744], [1900, 2.632723], [2000, 2.698764], [2100, 2.761373], [2200, 2.820969], [2300, 2.8779], 
+    [2400, 2.932459], [2500, 2.984894], [2600, 3.035415], [2700, 3.084203], [2800, 3.131417], [2900, 3.177191], 
+    [3000, 3.221645], [3100, 3.264882], [3200, 3.306966], [3300, 3.348066], [3400, 3.388166], [3500, 3.427361], 
+    [3600, 3.465707], [3700, 3.503258], [3800, 3.54006], [3900, 3.576155], [4000, 3.611583], [4100, 3.646378], 
+    [4200, 3.680573], [4300, 3.714196], [4400, 3.747275], [4500, 3.779835], [4600, 3.811898], [4700, 3.843486], 
+    [4800, 3.872618], [4900, 3.905312], [5000, 3.935353], [6000, 4.215292], [7000, 4.466907], [8000, 4.691637], [9000, 4.89974],
+    [1e4, 5.097310], [2e4, 6.557562], [3e4, 7.668585], 
     [4e4, 8.509277], [5e4, 9.219622], [6e4, 9.841527], [7e4, 10.397941], [8e4, 10.903328], [9e4, 11.367127], 
     [1e5, 11.801203], [2e5, 15.061135], [3e5, 17.344679], [4e5, 19.175763], [5e5, 20.717278], [6e5, 22.061602], 
-    [7e5, 23.267590], [8e5, 24.360903], [9e5, 25.353893], [1e6, 26.313938]
+    [7e5, 23.267590], [8e5, 24.360903], [9e5, 25.353893], [1e6, 26.308577]
 ]
-#Pr_10_Nu = [1.0000, 1.1139, 1.3600, 1.5612,
-            #1.7302, 1.8756, 2.0030, 2.1163, 2.2184, 2.3113, 2.3967, 2.4757, 2.5493, 2.6183,
-            #2.6832, 2.7446, 2.8029, 2.8584, 2.9115, 2.9622, 3.0110, 3.0579, 3.1031, 3.1467,
-            #3.1889, 3.2298, 3.2695, 3.3080, 3.3454, 3.3818, 3.4173, 3.4519, 3.4857, 3.5187,
-            #3.5509, 3.6189, 3.6524, 3.6854, 3.7179, 3.7498, 3.7812, 3.8122, 3.8427, 3.8728, 
-            #3.9024]
-#Pr_100_Nu = [1.0000, 1.1139, 1.3600, 1.5612,
-            #1.7302, 1.8757, 2.0031, 2.1164, 2.2186, 2.3116, 2.3970, 2.4761, 2.5497, 2.6188,
-            #2.6838, 2.7453, 2.8037, 2.8593, 2.9124, 2.9632, 3.0120, 3.0590, 3.1043, 3.1480,
-            #3.1903, 3.2312, 3.2709, 3.3095, 3.3470, 3.3835, 3.4190, 3.4537, 3.4875, 3.5205,
-            #3.5527, 3.5843, 3.6151, 3.6454, 3.6750, 3.7040, 3.7325, 3.7604, 3.7878, 3.8148,
-            #3.8412]
 
 # Map your parameters
 pr_datasets = {
-    #0.5: {'data': Pr_0_5_Nu, 'color': 'blue', 'marker': 'x'},
-    1.0: {'data': Pr_1_data,   'color': 'red', 'marker': 'o'}#,
-    #10:  {'data': Pr_10_Nu,  'color': 'green', 'marker': 's'},
-    #100: {'data': Pr_100_Nu, 'color': 'purple', 'marker': '^'}
+    1.0: {'data': Pr_1_data, 'color': 'red', 'marker': 'o'}
 }
 
 # --- 2. Mathematical Setup & Pre-Calculating Fits ---
@@ -97,11 +67,6 @@ for pr, props in pr_datasets.items():
     Nu_fit = Nu_arr[fit_mask]
     eps_fit = (Ra_fit - Rac) / Rac
 
-    # --- Strict mask for the pure Ra fit (Ra > 10,000) ---
-    pure_fit_mask = Ra_arr > 1e4
-    Ra_pure_fit = Ra_arr[pure_fit_mask]
-    Nu_pure_fit = Nu_arr[pure_fit_mask]
-    
     # 1. Existing epsilon fit (Low Ra)
     popt, _ = curve_fit(offset_power_law, eps_fit, Nu_fit, p0=[1.0, 0.3])
     A, x = popt
@@ -120,19 +85,19 @@ for pr, props in pr_datasets.items():
     )
     props['legend_str'] = f'$Nu = 1 + {A:.3f}\\epsilon^{{{x:.3f}}}$'
 
-    # 2. Pure Ra power law fit (High Ra only)
-    popt_pure, _ = curve_fit(pure_power_law, Ra_pure_fit, Nu_pure_fit, p0=[0.1, 0.3])
-    A_pure, b_pure = popt_pure
+    # 2. Exact Theoretical Fractional Fit (Replaces the curve_fit)
+    A_pure = 1.0 / 7.0
+    b_pure = 3.0 / 8.0
     
-    print(f"Pr = {pr:<4} | Pure Ra Fit: Nu = 1 + {A_pure:.4f} * Ra^{b_pure:.4f}")
+    # Store the pure coefficients to calculate the subplot ratio later
+    props['A_pure'] = A_pure
+    props['b_pure'] = b_pure
     
-    # Use np.nan so the dashed line completely disappears below Ra=1e4
-    props['fit_line_pure'] = np.where(
-        Ra_continuous < 1e4, 
-        np.nan, 
-        1.0 + A_pure * Ra_continuous**b_pure 
-    )
-    props['legend_str_pure'] = f'$Nu = 1 + {A_pure:.3f}Ra^{{{b_pure:.3f}}}$ $(Ra > 10^4)$'
+    print(f"Pr = {pr:<4} | Fractional Theoretical Fit: Nu = 1 + (1/7) * Ra^(3/8)")
+    
+    # Evaluate the exact fit across the ENTIRE continuous line
+    props['fit_line_pure'] = 1.0 + A_pure * Ra_continuous**b_pure 
+    props['legend_str_pure'] = r'$Nu = 1 + \frac{1}{7}Ra^{3/8}$'
 
 # =============================================================================
 # --- 3. Figure 1: Standard Linear Scale Plot ---
@@ -140,17 +105,14 @@ for pr, props in pr_datasets.items():
 fig1 = plt.figure(figsize=(10, 5)) 
 
 for pr, props in pr_datasets.items():
-    # Plot using the dynamically extracted Ra and Nu
     plt.plot(props['Ra_arr'], props['Nu_arr'], color=props['color'], marker=props['marker'], 
              linestyle='', markerfacecolor='none', linewidth=2, markersize=8, label=f'Data ($Pr={pr}$)')
     
-    # Epsilon fit line
     plt.plot(Ra_continuous, props['fit_line'], color=props['color'], linestyle='-', 
              linewidth=1.5, alpha=0.7, label=f'Fit: {props["legend_str"]}')
     
-    # Pure Ra fit line (dashed black)
     plt.plot(Ra_continuous, props['fit_line_pure'], color='black', linestyle='--', 
-             linewidth=1.5, alpha=0.8, label=f'High-Ra Fit: {props["legend_str_pure"]}')
+             linewidth=1.5, alpha=0.8, label=props['legend_str_pure'])
 
 plt.title('Nusselt Number vs. Rayleigh Number (Linear Scale)', fontsize=14)
 plt.xlabel('Rayleigh Number ($Ra$)', fontsize=12)
@@ -159,41 +121,71 @@ plt.ylabel('Nusselt Number ($Nu$)', fontsize=12)
 plt.xscale('linear')  
 plt.yscale('linear')  
 
-plt.xlim(500, 1.5e6)
-plt.ylim(0.8, 32)
+plt.xlim(500, 5000)
+plt.ylim(0.8, 4)
 plt.grid(True, alpha=0.3)
 plt.legend(loc='lower right', fontsize=11, ncol=1) 
 plt.tight_layout()
 plt.savefig('Nu_vs_Ra_Linear.png', dpi=300)
 
 # =============================================================================
-# --- 4. Figure 2: Semi-Log Scale Plot ---
+# --- 4. Figure 2: Semi-Log Scale Plot with Inset Subplot ---
 # =============================================================================
-fig2 = plt.figure(figsize=(10, 5)) 
+fig2, ax2_main = plt.subplots(figsize=(10, 6))
 
 for pr, props in pr_datasets.items():
-    plt.plot(props['Ra_arr'], props['Nu_arr'], color=props['color'], marker=props['marker'], 
+    # --- Main Plot: Standard Data & Fits ---
+    ax2_main.plot(props['Ra_arr'], props['Nu_arr'], color=props['color'], marker=props['marker'], 
              linestyle='', markerfacecolor='none', linewidth=2, markersize=8, label=f'Data ($Pr={pr}$)')
     
-    # Epsilon fit line
-    plt.plot(Ra_continuous, props['fit_line'], color=props['color'], linestyle='-', 
-             linewidth=1.5, alpha=0.7, label=f'Fit: {props["legend_str"]}')
+    ax2_main.plot(Ra_continuous, props['fit_line_pure'], color='black', linestyle='--', 
+             linewidth=1.5, alpha=0.8, label=props['legend_str_pure'])
+
+# --- Format Main Plot ---
+ax2_main.set_title('Nusselt Number vs. Rayleigh Number (Semi-Log Scale)', fontsize=18)
+ax2_main.set_xlabel('Rayleigh Number ($Ra$)', fontsize=16)
+ax2_main.set_ylabel('Nusselt Number ($Nu$)', fontsize=16)
+ax2_main.set_xscale('log')
+ax2_main.set_yscale('log')  
+ax2_main.set_xlim(500, 1.5e6)
+ax2_main.set_ylim(0.8, 32)
+ax2_main.grid(True, alpha=0.3)
+# Moved legend to top left so it does not collide with the new inset box
+ax2_main.legend(loc='upper left', fontsize=14, ncol=1)
+
+# --- Create & Format Inset Ratio Subplot (Bottom Right) ---
+# [x, y, width, height] as fractions of the main plot space
+ax2_ratio = ax2_main.inset_axes([0.52, 0.08, 0.45, 0.35])
+
+for pr, props in pr_datasets.items():
+    # Plot the ratio for ALL data points
+    Ra_valid = props['Ra_arr']
+    Nu_valid = props['Nu_arr']
     
-    # Pure Ra fit line (dashed black)
-    plt.plot(Ra_continuous, props['fit_line_pure'], color='black', linestyle='--', 
-             linewidth=1.5, alpha=0.8, label=f'High-Ra Fit: {props["legend_str_pure"]}')
+    # Calculate what the pure power law predicts for ALL exact Ra points using the fractional coefficients
+    Nu_predicted = pure_power_law(Ra_valid, props['A_pure'], props['b_pure'])
+    Nu_ratio = Nu_valid / Nu_predicted
+    
+    ax2_ratio.plot(Ra_valid, Nu_ratio, color=props['color'], marker=props['marker'], 
+                   linestyle='', markerfacecolor='none', markersize=5)
 
-plt.title('Nusselt Number vs. Rayleigh Number (Semi-Log Scale)', fontsize=14)
-plt.xlabel('Rayleigh Number ($Ra$)', fontsize=12)
-plt.ylabel('Nusselt Number ($Nu$)', fontsize=12)
+# Formatting the Inset
+ax2_ratio.axhline(1.0, color='black', linestyle='--', linewidth=1.5)
+ax2_ratio.set_ylabel(r'$Nu \,/\, (1 + \frac{1}{7} Ra^{3/8})$', fontsize=16)
+ax2_ratio.set_xscale('log')  
+ax2_ratio.set_yscale('log')
+ax2_ratio.set_xlim(500, 1.5e6) 
+ax2_ratio.set_ylim(0.4, 2)
 
-plt.xscale('log')  
-plt.yscale('log')  
+# Lock y-axis to a single 10^0 tick and hide all other redundant labels
+ax2_ratio.set_yticks([1.0])
+ax2_ratio.set_yticklabels(['$10^0$'])
+ax2_ratio.tick_params(axis='x', which='both', labelbottom=False) # Hides all x-axis labels
+ax2_ratio.tick_params(axis='y', which='minor', labelleft=False)  # Hides minor y-axis labels
+ax2_ratio.tick_params(axis='both', which='major', labelsize=12)
 
-plt.xlim(500, 1.5e6)
-plt.ylim(0.8, 32)
-plt.grid(True, alpha=0.3)
-plt.legend(loc='lower right', fontsize=11, ncol=1)
+ax2_ratio.grid(True, alpha=0.3)
+
 plt.tight_layout()
 plt.savefig('Nu_vs_Ra_SemiLog.png', dpi=300)
 
