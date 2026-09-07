@@ -7,18 +7,17 @@ This is the GitHub repository containing documentation, code and material used t
 Instructions to run your own Rayleigh-Benard simulation:
     -> \Boussinesq_Equations
     `python3 Boussinesq_Convection.py <L>`
-    One can change Rayleigh number, Taylor number and resolution within the script itself.
-
-    Includes other python scripts to visualise temperature, pressure, velocity, vorticity, nusselt number, etc.
+One can change Rayleigh number, Taylor number and resolution within the script itself.
+Includes other python scripts to visualise temperature, pressure, velocity, vorticity, nusselt number, etc.
 
 Instructions to run your own Adjoint-Based optimisation:
     -> \Adjoint_Problems
     Domain width optimisation:
         `python3 optimise_L.py`
-        One can change L_0, max_iterations within the script.
-        One can change resolution Rayleigh, Prandtl, Taylor numbers in the `forward_solver.py <L> <restart> <BC>` script (as well as internal heating).
+One can change L_0, max_iterations within the script.
+One can change resolution Rayleigh, Prandtl, Taylor numbers in the `forward_solver.py <L> <restart> <BC>` script (as well as internal heating).
     
     Initial conditions optimisation:
         -> \Optimising_Initial_Conditions
         `python3 wrapper.py`
-        One can change boundary conditions, etc. within the script itself.
+One can change boundary conditions, etc. within the script itself.
