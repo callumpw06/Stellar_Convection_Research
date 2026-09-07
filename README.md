@@ -17,7 +17,7 @@ Instructions to run your own Adjoint-Based optimisation:
 One can change L_0, max_iterations within the script.
 One can change resolution Rayleigh, Prandtl, Taylor numbers in the `forward_solver.py <L> <restart> <BC>` script (as well as internal heating).
     
-    Initial conditions optimisation:
+Initial conditions optimisation:
         -> \Optimising_Initial_Conditions
         `python3 wrapper.py`
 One can change boundary conditions, etc. within the script itself.
